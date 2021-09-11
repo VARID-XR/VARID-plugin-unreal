@@ -1,0 +1,56 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#pragma once
+
+#include "/Engine/Private/Common.ush"
+#include "VARIDCommon.ush"
+
+uint2 DispatchThreadIDOffset;
+float2 TexelSize;
+SamplerState LinearSampler;
+SamplerState PointSampler;
+StructuredBuffer<float4> VFMapPoints;
+uint NumVFMapPoints;
+RWTexture2D<float4> OutUAV;
+float InOriginOffset;
+
+const static float StdDev = 0.025;
+const static float RBFDenominator = 2.0 * StdDev * StdDev;
+
+// interpolation using gaussian RBF
+[numthreads(8, 8, 1)]
+void MainCS
+(
+	uint3 DispatchThreadID : SV_DispatchThreadID
+)
+{
+	uint2 ID = DispatchThreadIDOffset + DispatchThreadID.xy;
+	float2 UV = TexelSize * (ID + 0.5);
+
+	float InterpolatedValue = InOriginOffset;
+	float MinLength = 1.0;
+	float2 MinVector;
+	//float AngleOfMin = 0.0;
+
+	for (int i = 0; i < NumVFMapPoints; ++i)
+	{
+		float2 Vector = UV.xy - VFMapPoints[i].xy;
+		float Length = length(Vector);
+		float Value = VFMapPoints[i].z * exp(-(Length * Length) / RBFDenominator); // NOTE z component of a point holds the 'height' value.
+		InterpolatedValue += Value;
+
+		if (Length < MinLength)
+		{
+			MinLength = Length;
+			//AngleOfMin = atan2(Vector.x, Vector.y);
+			MinVector = Vector;
+		}
+	}
+
+	//OutUAV[ID].rgba = float4(UV.x, UV.y, 0.0, 0.0);
+	OutUAV[ID].rgba = float4(InterpolatedValue, MinLength, MinVector.x, MinVector.y);// AngleOfMin, (AngleOfMin * 180.0 / PI) + 180.0);
+
+	// TODO - remove MinLength?
+}

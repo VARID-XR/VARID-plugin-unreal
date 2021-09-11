@@ -1,0 +1,132 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#pragma once
+
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/Random.ush" 
+
+#define MaskThreshold 0.5
+
+#define PI 3.14159265359
+
+static const uint2 TopLeftOffset = uint2(-1, -1);
+static const uint2 TopOffset = uint2(0, -1);
+static const uint2 TopRightOffset = uint2(1, -1);
+static const uint2 RightOffset = uint2(1, 0);
+static const uint2 BottomRightOffset = uint2(1, 1);
+static const uint2 BottomOffset = uint2(0, 1);
+static const uint2 BottomLeftOffset = uint2(-1, 1);
+static const uint2 LeftOffset = uint2(-1, 0);
+
+float2 GetRandomUVOutsideMask(Texture2D<float> MaskSRV, SamplerState Sampler, uint2 SeedPixelID, float2 SeedUV)
+{
+	float2 UV = SeedUV;// float2(1.0, 1.0);
+	float MaskValue = 0.0;
+
+	do {		
+		// ~13 ALU
+		//UV.x = PseudoRandom(SeedPixelID.x);
+		//UV.y = PseudoRandom(SeedPixelID.y);
+		// 
+		// ~10
+		//UV.x = RandFast(SeedPixelID.xy);
+		//UV.y = RandFast(SeedPixelID.yx);
+
+		// ~8
+		//UV.x = RandBBSfloat(SeedPixelID.x);
+		//awUV.y = RandBBSfloat(SeedPixelID.y);
+
+		// ~ 7
+		UV.x = InterleavedGradientNoise(UV.x, 1);
+		UV.y = InterleavedGradientNoise(UV.y, 1);
+				
+		//UV = ((UV - 0.5) * 0.5) + SeedUV;
+
+		MaskValue = MaskSRV.SampleLevel(Sampler, UV, 0).r;
+	} while (MaskValue > MaskThreshold);// || MaskValue < (MaskThreshold - 0.2));
+
+	return UV;
+}
+
+#define BlurPixels Blur5
+
+// The guassian blur weights (derived from Pascal's triangle)
+static const float Weights5[3] = { 6.0f / 16.0f, 4.0f / 16.0f, 1.0f / 16.0f };
+static const float Weights7[4] = { 20.0f / 64.0f, 15.0f / 64.0f, 6.0f / 64.0f, 1.0f / 64.0f };
+static const float Weights9[5] = { 70.0f / 256.0f, 56.0f / 256.0f, 28.0f / 256.0f, 8.0f / 256.0f, 1.0f / 256.0f };
+
+float3 Blur5(float3 a, float3 b, float3 c, float3 d, float3 e, float3 f, float3 g, float3 h, float3 i)
+{
+	return Weights5[0] * e + Weights5[1] * (d + f) + Weights5[2] * (c + g);
+}
+
+float3 Blur7(float3 a, float3 b, float3 c, float3 d, float3 e, float3 f, float3 g, float3 h, float3 i)
+{
+	return Weights7[0] * e + Weights7[1] * (d + f) + Weights7[2] * (c + g) + Weights7[3] * (b + h);
+}
+
+float3 Blur9(float3 a, float3 b, float3 c, float3 d, float3 e, float3 f, float3 g, float3 h, float3 i)
+{
+	return Weights9[0] * e + Weights9[1] * (d + f) + Weights9[2] * (c + g) + Weights9[3] * (b + h) + Weights9[4] * (a + i);
+}
+
+
+
+void Store2Pixels_Max256(uint CacheR[128], uint CacheG[128], uint CacheB[128], uint index, float3 pixel1, float3 pixel2)
+{
+	CacheR[index] = f32tof16(pixel1.r) | f32tof16(pixel2.r) << 16;
+	CacheG[index] = f32tof16(pixel1.g) | f32tof16(pixel2.g) << 16;
+	CacheB[index] = f32tof16(pixel1.b) | f32tof16(pixel2.b) << 16;
+}
+
+void Load2Pixels_Max256(uint CacheR[128], uint CacheG[128], uint CacheB[128], uint index, out float3 pixel1, out float3 pixel2)
+{
+	uint3 RGB = uint3(CacheR[index], CacheG[index], CacheB[index]);
+	pixel1 = f16tof32(RGB);
+	pixel2 = f16tof32(RGB >> 16);
+}
+
+void Store1Pixel_Max256(uint CacheR[128], uint CacheG[128], uint CacheB[128], uint index, float3 pixel)
+{
+	CacheR[index] = asuint(pixel.r);
+	CacheG[index] = asuint(pixel.g);
+	CacheB[index] = asuint(pixel.b);
+}
+
+void Load1Pixel_Max256(uint CacheR[128], uint CacheG[128], uint CacheB[128], uint index, out float3 pixel)
+{
+	pixel = asfloat(uint3(CacheR[index], CacheG[index], CacheB[index]));
+}
+
+// Blur two pixels horizontally.  This reduces LDS reads and pixel unpacking.
+void BlurHorizontallyAndCacheResult_Max256(uint CacheR[128], uint CacheG[128], uint CacheB[128], uint outIndex, uint leftMostIndex)
+{
+	float3 s0, s1, s2, s3, s4, s5, s6, s7, s8, s9;
+	Load2Pixels_Max256(CacheR, CacheG, CacheB, leftMostIndex + 0, s0, s1);
+	Load2Pixels_Max256(CacheR, CacheG, CacheB, leftMostIndex + 1, s2, s3);
+	Load2Pixels_Max256(CacheR, CacheG, CacheB, leftMostIndex + 2, s4, s5);
+	Load2Pixels_Max256(CacheR, CacheG, CacheB, leftMostIndex + 3, s6, s7);
+	Load2Pixels_Max256(CacheR, CacheG, CacheB, leftMostIndex + 4, s8, s9);
+
+	// store ready for vertical pass - these values currently represent just the horizontal pass - i.e. 1D. we need 2D :)
+	Store1Pixel_Max256(CacheR, CacheG, CacheB, outIndex, BlurPixels(s0, s1, s2, s3, s4, s5, s6, s7, s8));
+	Store1Pixel_Max256(CacheR, CacheG, CacheB, outIndex + 1, BlurPixels(s1, s2, s3, s4, s5, s6, s7, s8, s9));
+}
+
+float3 BlurVertically_Max256(uint CacheR[128], uint CacheG[128], uint CacheB[128], uint topMostIndex)
+{
+	float3 s0, s1, s2, s3, s4, s5, s6, s7, s8;
+	Load1Pixel_Max256(CacheR, CacheG, CacheB, topMostIndex, s0);
+	Load1Pixel_Max256(CacheR, CacheG, CacheB, topMostIndex + 8, s1);
+	Load1Pixel_Max256(CacheR, CacheG, CacheB, topMostIndex + 16, s2);
+	Load1Pixel_Max256(CacheR, CacheG, CacheB, topMostIndex + 24, s3);
+	Load1Pixel_Max256(CacheR, CacheG, CacheB, topMostIndex + 32, s4);
+	Load1Pixel_Max256(CacheR, CacheG, CacheB, topMostIndex + 40, s5);
+	Load1Pixel_Max256(CacheR, CacheG, CacheB, topMostIndex + 48, s6);
+	Load1Pixel_Max256(CacheR, CacheG, CacheB, topMostIndex + 56, s7);
+	Load1Pixel_Max256(CacheR, CacheG, CacheB, topMostIndex + 64, s8);
+
+	return BlurPixels(s0, s1, s2, s3, s4, s5, s6, s7, s8);
+}

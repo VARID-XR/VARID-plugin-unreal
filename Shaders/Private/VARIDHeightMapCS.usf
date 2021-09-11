@@ -1,0 +1,86 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#pragma once
+
+#include "/Engine/Private/Common.ush"
+
+uint2 DispatchThreadIDOffset;
+float2 TexelSize;
+SamplerState LinearSampler;
+SamplerState PointSampler;
+StructuredBuffer<float4> VFMapPoints;
+uint NumVFMapPoints;
+RWTexture2D<float> OutUAV;
+float InOriginOffset;
+
+const static float StdDev = 0.025;
+const static float RBFDenominator = 2.0 * StdDev * StdDev;
+
+// interpolation using gaussian RBF
+[numthreads(8, 8, 1)]
+void MainCS
+(
+    uint3 DispatchThreadID : SV_DispatchThreadID
+)
+{  
+    uint2 ID = DispatchThreadIDOffset + DispatchThreadID.xy;
+    float2 UV = TexelSize * (ID + 0.5);
+
+    float InterpolatedValue = InOriginOffset;
+
+    for (int i = 0; i < NumVFMapPoints; ++i)
+    {
+        float len = length(UV - VFMapPoints[i].xy);
+        InterpolatedValue += VFMapPoints[i].z * exp(-(len * len) / RBFDenominator); // NOTE z component of a point holds the 'height' value.
+    }
+
+    OutUAV[ID] = clamp(InterpolatedValue, 0.0, 1.0);
+}
+
+
+// i cant get the IDW interpolator to look right... 
+//const static float DistancePower = 2.5;
+//const static float NeighbourDistanceThreshold = 0.2;   // TODO remove : causes more problems than it solves
+//const static float ExactThreshold = 0.1; // if we are very close to a point then avoid a divide by zero and set to exact weight of the point
+
+//[numthreads(8, 8, 1)]
+//void MainCS
+//(
+//    uint3 GroupID : SV_GroupID, // SV_ = system value
+//    uint3 GroupThreadID : SV_GroupThreadID,
+//    uint3 DispatchThreadID : SV_DispatchThreadID,    // pixel id
+//    uint GroupIndex : SV_GroupIndex     // flattened version of groupThreadID
+//)
+//{  
+//    //float DistancePower = 2.;
+//    //float NeighbourDistanceThreshold = 0.1;   // TODO remove : causes more problems than it solves
+//    //float ExactThreshold = 0.01; // if we are very close to a point then avoid a divide by zero and set to exact weight of the point
+//
+//    //uint numStructs = 0;
+//    //uint stride = 0;
+//    //VFMapPoints.GetDimensions(numStructs, stride);
+//
+//    float2 UV = TexelSize * (DispatchThreadID.xy + 0.5);
+//    float interpolatedValue = 0.0;
+//    float sumOfAllInverseDistances = 0.0;
+//    float inverseDistances[MAX_NUM_POINTS];
+//
+//    for (uint i = 0; i < NumVFMapPoints; ++i)//
+//    {
+//        float dist = length(UV - VFMapPoints[i].xy);    // distance between current pixel and a VF map point
+//
+//        // check if its worth including the vf map point in this pixels interpolated result
+//        if (dist < NeighbourDistanceThreshold)  
+//        {
+//            dist = max(ExactThreshold, dist);   // dont allow distance to get too close to zero - which would cause divide by zero errors below
+//            inverseDistances[i] = 1. / pow(dist, DistancePower);
+//            sumOfAllInverseDistances += inverseDistances[i];
+//        }
+//        interpolatedValue += clamp(VFMapPoints[i].z, 0.0, 1.0) * inverseDistances[i];
+//    }
+//    interpolatedValue /= sumOfAllInverseDistances;
+//
+//    OutUAV[DispatchThreadID.xy] = interpolatedValue;
+//}

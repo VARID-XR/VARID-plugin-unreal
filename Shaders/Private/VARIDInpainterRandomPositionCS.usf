@@ -1,0 +1,32 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#pragma once
+
+#include "/Engine/Private/Common.ush"
+#include "VARIDCommon.ush"
+
+uint2 InDispatchThreadIDOffset;
+float2 InTexelSize;
+SamplerState InBilinearSampler;
+SamplerState InPointSampler;
+Texture2D<float> InMaskSRV;
+RWTexture2D<float2> OutPositionUAV;
+
+[numthreads(8, 8, 1)]
+void MainCS
+(
+	uint3 DispatchThreadID : SV_DispatchThreadID
+)
+{
+	uint2 ID = InDispatchThreadIDOffset + DispatchThreadID.xy;
+	float2 UV = InTexelSize * (ID + 0.5);
+
+	if (InMaskSRV[ID].r > MaskThreshold)
+	{
+		UV = GetRandomUVOutsideMask(InMaskSRV, InBilinearSampler, ID, UV);
+	}
+
+	OutPositionUAV[ID] = UV;
+}

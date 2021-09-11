@@ -1,0 +1,22 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#pragma once
+
+#include "/Engine/Private/Common.ush"
+
+uint2 InDispatchThreadIDOffset;
+float2 InTexelSize;
+SamplerState InSampler;
+Texture2D<float4> InSRV;
+RWTexture2D<float4> OutUAV;
+
+[numthreads(8, 8, 1)]
+void MainCS(uint3 DispatchThreadID : SV_DispatchThreadID)
+{
+    uint2 ID = InDispatchThreadIDOffset + DispatchThreadID.xy;
+    float2 UV = InTexelSize * (ID + 0.5);
+    float4 OutColour = InSRV.SampleLevel(InSampler, UV, 0);
+    OutUAV[ID] = OutColour;
+}

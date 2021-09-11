@@ -1,0 +1,28 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#pragma once
+
+#include "/Engine/Private/Common.ush"
+#include "VARIDCommon.ush"
+
+uint2 InDispatchThreadIDOffset;
+Texture2D InGaussianSRV;
+Texture2D InLaplacianSRV;
+Texture2D InVFMapSRV;
+RWTexture2D<float4> OutUAV;
+
+[numthreads(8, 8, 1)]
+void MainCS
+(
+    uint3 DispatchThreadID : SV_DispatchThreadID
+)
+{
+    uint2 ID = InDispatchThreadIDOffset + DispatchThreadID.xy;
+    float VFMapPixel = InVFMapSRV[ID].r;
+    float InvertedVFMapPixel = 1.0 - VFMapPixel;
+    float4 LaplacianPixel = InvertedVFMapPixel * ((InLaplacianSRV[ID].rgba * 2.0) - 1.0); // apply reverse bias
+    float4 GaussianPixel = InGaussianSRV[ID];
+    OutUAV[ID] = LaplacianPixel + GaussianPixel;
+}

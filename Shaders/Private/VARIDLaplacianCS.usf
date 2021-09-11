@@ -1,0 +1,33 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#pragma once
+
+#include "/Engine/Private/Common.ush"
+#include "VARIDCommon.ush"
+
+uint2 DispatchThreadIDOffset;
+Texture2D InLoResSRV; 
+Texture2D InHiResSRV; 
+RWTexture2D<float4> OutLaplacianUAV;
+
+[numthreads(8, 8, 1)]
+void MainCS
+(
+    uint3 DispatchThreadID : SV_DispatchThreadID
+)
+{
+    uint2 ID = DispatchThreadIDOffset + DispatchThreadID.xy;
+    float3 LoResColour = InLoResSRV[ID].rgb;
+    float3 HiResColour = InHiResSRV[ID].rgb;
+
+    float3 colour = float3(
+        HiResColour.r - LoResColour.r,
+        HiResColour.g - LoResColour.g,
+        HiResColour.b - LoResColour.b);
+
+    colour = (colour * 0.5) + 0.5;  // apply bias
+
+    OutLaplacianUAV[ID] = float4(colour.r, colour.g, colour.b, 1.0);
+}

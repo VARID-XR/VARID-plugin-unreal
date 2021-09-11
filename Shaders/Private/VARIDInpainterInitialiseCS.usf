@@ -1,0 +1,32 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+#pragma once
+
+#include "/Engine/Private/Common.ush"
+#include "VARIDCommon.ush"
+
+uint2 InDispatchThreadIDOffset;
+float2 InTexelSize;
+Texture2D InMaskSRV;
+RWTexture2D<float4> OutMetaDataUAV;
+
+[numthreads(8, 8, 1)]
+void MainCS
+(
+	uint3 DispatchThreadID : SV_DispatchThreadID
+)
+{
+	uint2 ID = InDispatchThreadIDOffset + DispatchThreadID.xy;
+
+	if (InMaskSRV[ID].r > MaskThreshold)
+	{
+		OutMetaDataUAV[ID] = float4(-1, -1, -1, 1);
+	}
+	else
+	{
+		float2 UV = InTexelSize * (ID + 0.5);
+		OutMetaDataUAV[ID] = float4(UV.x, UV.y, 0, 0);
+	}	
+}
