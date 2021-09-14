@@ -47,16 +47,19 @@ Relevant skills: C++, Shaders, HLSL
 
 ### Software Structure Overview
 - Unreal Application
-	- VARIDPlugin
-		- VARIDModule
-		- VARIDRendering
-		- VARIDProfile
-		- VARIDEyeTracking
-		- VARIDBlueprintFunctionLibrary
-		- VARIDCheatManager
-		- USBCamera - blueprint only
-	- 3rd Party Eye Tracking Plugin e.g. SRanipal, OpenXR
-	- 3rd Party Passthrough Cameras e.g. SRWorks, ZedMini
+  - Content e.g. app levels, models, blueprints, materials, etc
+  - Plugins
+  	- VARIDPlugin
+    	- Content - levels - Examples AR and VR
+  		- VARIDModule
+  		- VARIDRendering
+  		- VARIDProfile
+  		- VARIDEyeTracking
+  		- VARIDBlueprintFunctionLibrary
+  		- VARIDCheatManager
+  		- USBCamera - blueprint only
+  	- 3rd Party Eye Tracking Plugin e.g. SRanipal, OpenXR
+  	- 3rd Party Passthrough Cameras e.g. SRWorks, ZedMini
 
 ## Tools
 - Unreal Engine 4.26.2. 
