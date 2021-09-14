@@ -355,6 +355,7 @@ public:
 		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InMaskSRV)
 		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InMetaDataSRV)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutMetaDataUAV)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutColourUAV)
 		END_SHADER_PARAMETER_STRUCT();
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
@@ -1470,6 +1471,8 @@ static bool BuildInpaintTexture_RenderThread(FRDGBuilder& GraphBuilder, FRDGText
 
 	FRDGTextureRef MetaDataTexture_1 = GraphBuilder.CreateTexture(MetaDataTextureDesc, TEXT("MetaDataTexture_1"));
 	FRDGTextureRef MetaDataTexture_2 = GraphBuilder.CreateTexture(MetaDataTextureDesc, TEXT("MetaDataTexture_2"));
+	FRDGTextureRef ColourTexture_1 = GraphBuilder.CreateTexture(InOriginalTexture->Desc, TEXT("ColourTexture_1"));
+	FRDGTextureRef ColourTexture_2 = GraphBuilder.CreateTexture(InOriginalTexture->Desc, TEXT("ColourTexture_2"));
 
 	TShaderMapRef<FVARIDInpainterInitialiseCS> InpainterInitialiseShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	TShaderMapRef<FVARIDInpainterFillCS> InpainterShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
@@ -1499,6 +1502,8 @@ static bool BuildInpaintTexture_RenderThread(FRDGBuilder& GraphBuilder, FRDGText
 	// pointers to textures
 	FRDGTextureRef InMetaData;
 	FRDGTextureRef OutMetaData;
+	FRDGTextureRef InColour;
+	FRDGTextureRef OutColour;
 
 	// refine 
 	for (int32 PassCounter = 0; PassCounter < NumberOfPasses; ++PassCounter)
@@ -1508,11 +1513,15 @@ static bool BuildInpaintTexture_RenderThread(FRDGBuilder& GraphBuilder, FRDGText
 		{
 			InMetaData = MetaDataTexture_1;
 			OutMetaData = MetaDataTexture_2;
+			InColour = ColourTexture_1;
+			OutColour = ColourTexture_2;
 		}
 		else //if (CostReducingIteration % 2 == 1)
 		{
 			InMetaData = MetaDataTexture_2;
 			OutMetaData = MetaDataTexture_1;
+			InColour = ColourTexture_2;
+			OutColour = ColourTexture_1;
 		}
 
 		{
@@ -1520,10 +1529,11 @@ static bool BuildInpaintTexture_RenderThread(FRDGBuilder& GraphBuilder, FRDGText
 			PassParameters->InDispatchThreadIDOffset = DispatchThreadIDOffset;
 			PassParameters->InTexelSize = TexelSize;
 			PassParameters->PassCounter = PassCounter;
-			PassParameters->InColourSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InOriginalTexture, MetaDataMipLevel));
+			PassParameters->InColourSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InColour, MetaDataMipLevel));
 			PassParameters->InMaskSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, MetaDataMipLevel));
 			PassParameters->InMetaDataSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InMetaData, MetaDataMipLevel));
 			PassParameters->OutMetaDataUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutMetaData, MetaDataMipLevel));
+			PassParameters->OutColourUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutColour, MetaDataMipLevel));
 
 			FComputeShaderUtils::AddPass(
 				GraphBuilder,

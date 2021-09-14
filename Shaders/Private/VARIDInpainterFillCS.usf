@@ -12,39 +12,9 @@ float2 InTexelSize;
 int PassCounter;
 Texture2D InColourSRV;
 Texture2D InMaskSRV;
-Texture2D InMetaDataSRV;
-RWTexture2D<float4> OutMetaDataUAV;
-
-float3 rgb2xyz(float3 c) {
-	float3 tmp;
-	tmp.x = (c.r > 0.04045) ? pow((c.r + 0.055) / 1.055, 2.4) : c.r / 12.92;
-	tmp.y = (c.g > 0.04045) ? pow((c.g + 0.055) / 1.055, 2.4) : c.g / 12.92,
-		tmp.z = (c.b > 0.04045) ? pow((c.b + 0.055) / 1.055, 2.4) : c.b / 12.92;
-
-	const float3x3 mat = float3x3(
-		0.4124, 0.3576, 0.1805,
-		0.2126, 0.7152, 0.0722,
-		0.0193, 0.1192, 0.9505
-	);
-
-	return 100.0 * mul(tmp, mat);
-}
-
-float3 xyz2lab(float3 c) {
-	float3 n = c / float3(95.047, 100, 108.883);
-	float3 v;
-	v.x = (n.x > 0.008856) ? pow(n.x, 1.0 / 3.0) : (7.787 * n.x) + (16.0 / 116.0);
-	v.y = (n.y > 0.008856) ? pow(n.y, 1.0 / 3.0) : (7.787 * n.y) + (16.0 / 116.0);
-	v.z = (n.z > 0.008856) ? pow(n.z, 1.0 / 3.0) : (7.787 * n.z) + (16.0 / 116.0);
-	return float3((116.0 * v.y) - 16.0, 500.0 * (v.x - v.y), 200.0 * (v.y - v.z));
-}
-
-float3 rgb2lab(float3 c) {
-	return c;
-
-	float3 lab = xyz2lab(rgb2xyz(c));
-	return float3(lab.x / 100.0, 0.5 + 0.5 * (lab.y / 127.0), 0.5 + 0.5 * (lab.z / 127.0));
-}
+Texture2D InMetaDataSRV; 
+RWTexture2D<float4> OutMetaDataUAV;	//UV.x, UV.y, PassCounter, Fill(0 or 1)
+RWTexture2D<float4> OutColourUAV;
 
 [numthreads(8, 8, 1)]
 void MainCS
@@ -55,7 +25,7 @@ void MainCS
 	uint2 ID = InDispatchThreadIDOffset + DispatchThreadID.xy;
 	PassCounter++;
 
-	float4 BestValue = InMetaDataSRV[ID];	//default is passthrough
+	float4 BestValue = InMetaDataSRV[ID];	//default is passthrough whether it be mask, edge or not
 
 	 // TODO try intensity diff intead of colour
 	// LAB colour doesnt seem to improve things
@@ -67,13 +37,83 @@ void MainCS
 		{
 			float LowestDiff = 0.1;
 
+			float3 AccumulatedColour = float3(0, 0, 0);
+			int NumColours = 0;
+
+			// in a clockwise order around the compass
+
 			if (InMetaDataSRV[ID + TopOffset].a == 0.0)
 			{
-				float3 TopColour = rgb2lab(InColourSRV[InMetaDataSRV[ID + TopOffset].xy].rgb);
+				AccumulatedColour += InColourSRV[ID + TopOffset].rgb;
+				NumColours++;
+			}
+
+			if (InMetaDataSRV[ID + TopRightOffset].a == 0.0)
+			{
+				AccumulatedColour += InColourSRV[ID + TopRightOffset].rgb;
+				NumColours++;
+			}
+
+			if (InMetaDataSRV[ID + RightOffset].a == 0.0)
+			{
+				AccumulatedColour += InColourSRV[ID + RightOffset].rgb;
+				NumColours++;
+			}
+
+			if (InMetaDataSRV[ID + BottomRightOffset].a == 0.0)
+			{
+				AccumulatedColour += InColourSRV[ID + BottomRightOffset].rgb;
+				NumColours++;
+			}
+
+			if (InMetaDataSRV[ID + BottomOffset].a == 0.0)
+			{
+				AccumulatedColour += InColourSRV[ID + BottomOffset].rgb;
+				NumColours++;
+			}
+
+			//if (InMetaDataSRV[ID + BottomLeftOffset].a == 0.0)
+			{
+				AccumulatedColour += InColourSRV[ID + BottomLeftOffset].rgb;
+				NumColours++;
+			}
+
+			//if (InMetaDataSRV[ID + LeftOffset].a == 0.0)
+			{
+				AccumulatedColour += InColourSRV[ID + LeftOffset].rgb;
+				NumColours++;
+			}
+
+			//if (InMetaDataSRV[ID + TopLeftOffset].a == 0.0)
+			{
+				AccumulatedColour += InColourSRV[ID + TopLeftOffset].rgb;
+				NumColours++;
+			}
+
+			float Colour = AccumulatedColour / NumColours;
+
+			if (InMetaDataSRV[ID + TopOffset].a == 0.0)
+			{
+				float3 TopColour = InColourSRV[InMetaDataSRV[ID + TopOffset].xy].rgb;			
+
+				if (InMetaDataSRV[ID + TopLeftOffset].a == 0.0 && InMetaDataSRV[ID + TopRightOffset].a == 0.0)
+				{
+					float3 TopLeftColour = InColourSRV[InMetaDataSRV[ID + TopLeftOffset].xy].rgb;
+					float3 TopRightColour = InColourSRV[InMetaDataSRV[ID + TopRightOffset].xy].rgb;
+
+					float DiffColour = length(TopLeftColour - TopRightColour);
+
+					if (DiffColour < LowestDiff)
+					{
+						LowestDiff = DiffColour;
+						float2 UV = InMetaDataSRV[ID + TopOffset].xy;
+						BestValue = float4(UV.x, UV.y, PassCounter, 0);
+					}
+				}
 
 				if (InMetaDataSRV[ID + LeftOffset].a == 0.0)
 				{
-					float3 LeftColour = rgb2lab(InColourSRV[InMetaDataSRV[ID + LeftOffset].xy].rgb);
+					float3 LeftColour = InColourSRV[InMetaDataSRV[ID + LeftOffset].xy].rgb;
 
 					float DiffColour = length(TopColour - LeftColour);
 
@@ -87,7 +127,7 @@ void MainCS
 				
 				if (InMetaDataSRV[ID + RightOffset].a == 0.0)
 				{
-					float3 RightColour = rgb2lab(InColourSRV[InMetaDataSRV[ID + RightOffset].xy].rgb);
+					float3 RightColour = InColourSRV[InMetaDataSRV[ID + RightOffset].xy].rgb;
 
 					float DiffColour = length(TopColour - RightColour);
 
@@ -98,30 +138,30 @@ void MainCS
 						BestValue = float4(UV.x, UV.y, PassCounter, 0);
 					}
 				}
-				
-				//if (InMetaDataSRV[ID + TopLeftOffset].a == 0.0 && InMetaDataSRV[ID + TopRightOffset].a == 0.0)
-				//{
-				//	float3 TopLeftColour = InColourSRV[InMetaDataSRV[ID + TopLeftOffset].xy].rgb;
-				//	float3 TopRightColour = InColourSRV[InMetaDataSRV[ID + TopRightOffset].xy].rgb;
-
-				//	float DiffColour = length(TopLeftColour - TopRightColour);
-
-				//	if (DiffColour < LowestDiff)
-				//	{
-				//		LowestDiff = DiffColour;
-				//		float2 UV = InMetaDataSRV[ID + TopOffset].xy;
-				//		BestValue = float4(UV.x, UV.y, PassCounter, 0);
-				//	}
-				//}
 			}
 
 			if (InMetaDataSRV[ID + BottomOffset].a == 0.0)
 			{
-				float3 BottomColour = rgb2lab(InColourSRV[InMetaDataSRV[ID + BottomOffset].xy].rgb);
+				float3 BottomColour = InColourSRV[InMetaDataSRV[ID + BottomOffset].xy].rgb;
+
+				if(InMetaDataSRV[ID + BottomLeftOffset].a == 0.0 && InMetaDataSRV[ID + BottomRightOffset].a == 0.0)
+				{
+					float3 BottomLeftColour = InColourSRV[InMetaDataSRV[ID + BottomLeftOffset].xy].rgb;
+					float3 BottomRightColour = InColourSRV[InMetaDataSRV[ID + BottomRightOffset].xy].rgb;
+
+					float DiffColour = length(BottomLeftColour - BottomRightColour);
+
+					if (DiffColour < LowestDiff)
+					{
+						LowestDiff = DiffColour;
+						float2 UV = InMetaDataSRV[ID + TopOffset].xy;
+						BestValue = float4(UV.x, UV.y, PassCounter, 0);
+					}
+				}
 
 				if (InMetaDataSRV[ID + LeftOffset].a == 0.0)
 				{
-					float3 LeftColour = rgb2lab(InColourSRV[InMetaDataSRV[ID + LeftOffset].xy].rgb);
+					float3 LeftColour = InColourSRV[InMetaDataSRV[ID + LeftOffset].xy].rgb;
 
 					float DiffColour = length(BottomColour - LeftColour);
 
@@ -135,7 +175,7 @@ void MainCS
 				
 				if (InMetaDataSRV[ID + RightOffset].a == 0.0)
 				{
-					float3 RightColour = rgb2lab(InColourSRV[InMetaDataSRV[ID + RightOffset].xy].rgb);
+					float3 RightColour = InColourSRV[InMetaDataSRV[ID + RightOffset].xy].rgb;
 
 					float DiffColour = length(BottomColour - RightColour);
 
@@ -145,22 +185,7 @@ void MainCS
 						float2 UV = InMetaDataSRV[ID + BottomRightOffset].xy;
 						BestValue = float4(UV.x, UV.y, PassCounter, 0);
 					}
-				}
-								
-				//if(InMetaDataSRV[ID + BottomLeftOffset].a == 0.0 && InMetaDataSRV[ID + BottomRightOffset].a == 0.0)
-				//{
-				//	float3 BottomLeftColour = InColourSRV[InMetaDataSRV[ID + BottomLeftOffset].xy].rgb;
-				//	float3 BottomRightColour = InColourSRV[InMetaDataSRV[ID + BottomRightOffset].xy].rgb;
-
-				//	float DiffColour = length(BottomLeftColour - BottomRightColour);
-
-				//	if (DiffColour < LowestDiff)
-				//	{
-				//		LowestDiff = DiffColour;
-				//		float2 UV = InMetaDataSRV[ID + TopOffset].xy;
-				//		BestValue = float4(UV.x, UV.y, PassCounter, 0);
-				//	}
-				//}
+				}						
 			}
 		}
 	}

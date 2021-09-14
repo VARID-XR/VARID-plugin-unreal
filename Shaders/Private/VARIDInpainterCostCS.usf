@@ -78,7 +78,7 @@ float CalcSpatialCost(uint2 InTargetID, uint2 InSourceID)
 	//SpatialCost += distance((InSourceID + BottomRightOffset).xy, InPositionSRV[InTargetID + BottomRightOffset].xy * InTextureSize.xy);
 
 	//return SpatialCostAlpha * SpatialCost * 0.25 / 2.0;
-	return SpatialCost;
+	return SpatialCost / 4.0;
 }
 
 float CalcAppearanceCost(uint2 InTargetID, uint2 InSourceID)
