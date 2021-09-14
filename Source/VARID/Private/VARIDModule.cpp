@@ -12,8 +12,6 @@
 #include "CoreMinimal.h"
 #include "EngineMinimal.h"
 #include "Runtime/Launch/Resources/Version.h"
-#include "DirectoryWatcherModule.h"
-#include "IDirectoryWatcher.h"
 #include "HAL/FileManager.h"
 #include "ImageUtils.h"
 
@@ -35,9 +33,9 @@ static bool CheckFOV(FVector2D FOV)
 
 void FVARIDModule::StartupModule()
 {
-	UE_LOG(LogTemp, Warning, TEXT("VARID: FVARIDModule_StartupModule"));
+	UE_LOG(LogTemp, Display, TEXT("VARID: FVARIDModule_StartupModule"));
 
-	check(ENGINE_MINOR_VERSION >= 25);
+	check(ENGINE_MINOR_VERSION >= 26);
 
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 
@@ -51,7 +49,7 @@ void FVARIDModule::StartupModule()
 
 void FVARIDModule::ShutdownModule()
 {
-	UE_LOG(LogTemp, Warning, TEXT("VARID: FVARIDModule_ShutdownModule"));
+	UE_LOG(LogTemp, Display, TEXT("VARID: FVARIDModule_ShutdownModule"));
 
 	// This function may be called during shutdown to clean up your module.  For modules that support dynamic reloading,
 	// we call this function before unloading the module.

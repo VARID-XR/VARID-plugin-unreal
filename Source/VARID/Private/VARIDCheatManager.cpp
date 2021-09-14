@@ -5,6 +5,7 @@
 #include "VARIDCheatManager.h"
 #include "VARIDModule.h"
 #include "GameFramework/CheatManager.h"
+#include "GameFramework/PlayerController.h"
 
 void UVARIDCheatManager::VARID_SetProfileRootPath(const FString& ProfileRootPath)
 {
