@@ -11,10 +11,13 @@ uint2 InDispatchThreadIDOffset;
 float2 InTexelSize;
 SamplerState InBilinearSampler;
 SamplerState InPointSampler;
-Texture2D InColourSRV;
+int SamplerMipLevel;
+Texture2D InMaskedColourSRV;
+Texture2D InUnmaskedColourSRV;
 Texture2D InMaskSRV;
 Texture2D InMetaDataSRV;
 RWTexture2D<float2> OutPositionUAV;
+RWTexture2D<float4> OutColourUAV;
 
 [numthreads(8, 8, 1)]
 void MainCS
@@ -27,11 +30,15 @@ void MainCS
 
 	if (InMaskSRV[ID].r > MaskThreshold)
 	{
-		 float2 SourceUV = InMetaDataSRV.SampleLevel(InPointSampler, UV, 4).xy;	// point sampler ensures we dont interpolate UVs - bad for an inpainter!!!
+		 float2 SourceUV = InMetaDataSRV.SampleLevel(InPointSampler, UV, SamplerMipLevel).xy;	// point sampler ensures we dont interpolate UVs - bad for an inpainter!!!
 		 OutPositionUAV[ID].xy = (SourceUV - UV) + SourceUV;		// manually interpolate - this will add the detailed UVs for mip level 0
+
+
+		 OutColourUAV[ID] = InMaskedColourSRV.SampleLevel(InBilinearSampler, UV, SamplerMipLevel).rgba;
 	}
 	else
 	{		
 		OutPositionUAV[ID].xy = UV;
+		OutColourUAV[ID] = InUnmaskedColourSRV[ID];
 	}
 }

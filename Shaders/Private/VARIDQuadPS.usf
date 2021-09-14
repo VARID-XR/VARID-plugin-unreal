@@ -28,6 +28,10 @@ void MainPS
 	out float4 OutColour : SV_Target0
 )
 {
+    
+    OutColour = InInpaintSRV.SampleLevel(InBilinearSampler, UV, 0);
+    return;
+
     // UV
     float2 InpaintPositionUV = InInpaintSRV.SampleLevel(InPointSampler, UV, 0); // DO NOT use linear     
     float2 WarpAmount = InWarpVFMapSRV.SampleLevel(InBilinearSampler, UV, 0);

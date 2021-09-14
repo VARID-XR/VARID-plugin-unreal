@@ -27,5 +27,6 @@ This project and everyone participating in it is governed by the Code of Conduct
     - The json profile lists the FX as sub nodes in alphabetical order. 
     - The render method builds up FX VF Maps in alphabetical order. 
 - Function parameters
-  - all input parameters prefixed with In
-  - all output parameter prefixed with Out
+  - All input parameters prefixed with In
+  - All output parameter prefixed with Out
+  - Prefixes make it very clear what the scope of the variable belongs to

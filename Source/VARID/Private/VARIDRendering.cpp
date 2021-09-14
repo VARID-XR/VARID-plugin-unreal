@@ -382,10 +382,13 @@ public:
 		SHADER_PARAMETER(FVector2D, InTexelSize)
 		SHADER_PARAMETER_SAMPLER(SamplerState, InBilinearSampler)
 		SHADER_PARAMETER_SAMPLER(SamplerState, InPointSampler)
-		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InColourSRV)
+		SHADER_PARAMETER(int, SamplerMipLevel)
+		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InMaskedColourSRV)
+		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InUnmaskedColourSRV)
 		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InMaskSRV)
 		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InMetaDataSRV)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutPositionUAV)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutColourUAV)
 		END_SHADER_PARAMETER_STRUCT();
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
@@ -889,39 +892,39 @@ static bool BuildPositionMapTexture_RenderThread
 /*****************************************************************************************************************/
 // FX 
 
-static bool BuildPyramid_RenderThread(FRDGBuilder& GraphBuilder, FRDGTextureRef Texture, FRHISamplerState* Sampler, const FIntRect& ViewportRect)
+static bool BuildPyramid_RenderThread(FRDGBuilder& InGraphBuilder, FRDGTextureRef InTexture, FRHISamplerState* InSampler, const FIntRect& InViewportRect)
 {
-	check(Texture);
+	check(InTexture);
 
-	const FRDGTextureDesc& TextureDesc = Texture->Desc;
+	const FRDGTextureDesc& TextureDesc = InTexture->Desc;
 	TShaderMapRef<FVARIDBasicResampleCS> ResampleComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
 	for (uint32 MipLevel = 1; MipLevel < TextureDesc.NumMips; ++MipLevel)	// NOTE start at level 1 (level zero should already exist!)
 	{
 		const FIntPoint TextureSize(FMath::Max(TextureDesc.Extent.X >> MipLevel, 1), FMath::Max(TextureDesc.Extent.Y >> MipLevel, 1));
 		const FVector2D TexelSize(1.0f / TextureSize.X, 1.0f / TextureSize.Y);
-		const FIntPoint DispatchSize(FMath::Max(ViewportRect.Width() >> MipLevel, 1), FMath::Max(ViewportRect.Height() >> MipLevel, 1));
-		const FIntPoint DispatchThreadIDOffset(ViewportRect.Min.X >> MipLevel, ViewportRect.Min.Y >> MipLevel);
+		const FIntPoint DispatchSize(FMath::Max(InViewportRect.Width() >> MipLevel, 1), FMath::Max(InViewportRect.Height() >> MipLevel, 1));
+		const FIntPoint DispatchThreadIDOffset(InViewportRect.Min.X >> MipLevel, InViewportRect.Min.Y >> MipLevel);
 
-		FVARIDBasicResampleCS::FParameters* ResamplePassParameters = GraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
-		ResamplePassParameters->InDispatchThreadIDOffset = DispatchThreadIDOffset;
-		ResamplePassParameters->InTexelSize = TexelSize;
-		ResamplePassParameters->InSampler = Sampler;
-		ResamplePassParameters->InSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(Texture, MipLevel - 1));	// SRV is for a different mip level to the UAV - therefore Texture can appear to be both input and output
-		ResamplePassParameters->OutUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(Texture, MipLevel));
+		FVARIDBasicResampleCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
+		PassParameters->InDispatchThreadIDOffset = DispatchThreadIDOffset;
+		PassParameters->InTexelSize = TexelSize;
+		PassParameters->InSampler = InSampler;
+		PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InTexture, MipLevel - 1));	// SRV is for a different mip level to the UAV - therefore Texture can appear to be both input and output
+		PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(InTexture, MipLevel));
 
 		FComputeShaderUtils::AddPass(
-			GraphBuilder,
+			InGraphBuilder,
 			RDG_EVENT_NAME("VARID - Build Pyramid - Downsample - MipLevel=%d", MipLevel),
 			ResampleComputeShader,
-			ResamplePassParameters,
+			PassParameters,
 			FComputeShaderUtils::GetGroupCount(DispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
 	}
 
 	return true;
 }
 
-static bool BuildPyramidCopy_RenderThread(FRDGBuilder& GraphBuilder, FRDGTextureRef InTexture, FRDGTextureRef OutTexture, FRHISamplerState* Sampler, const FIntRect& ViewportRect)
+static bool BuildPyramidCopy_RenderThread(FRDGBuilder& InGraphBuilder, FRDGTextureRef InTexture, FRDGTextureRef OutTexture, FRHISamplerState* InSampler, const FIntRect& InViewportRect)
 {
 	check(InTexture);
 	check(OutTexture);
@@ -933,19 +936,19 @@ static bool BuildPyramidCopy_RenderThread(FRDGBuilder& GraphBuilder, FRDGTexture
 	{
 		const FIntPoint DestTextureSize(FMath::Max(OutTextureDesc.Extent.X >> MipLevel, 1), FMath::Max(OutTextureDesc.Extent.Y >> MipLevel, 1));
 		const FVector2D TexelSize = FVector2D(1.0f / DestTextureSize.X, 1.0f / DestTextureSize.Y);
-		const FIntPoint DispatchSize(FMath::Max(ViewportRect.Width() >> MipLevel, 1), FMath::Max(ViewportRect.Height() >> MipLevel, 1));
-		const FIntPoint DispatchThreadIDOffset(ViewportRect.Min.X >> MipLevel, ViewportRect.Min.Y >> MipLevel);
+		const FIntPoint DispatchSize(FMath::Max(InViewportRect.Width() >> MipLevel, 1), FMath::Max(InViewportRect.Height() >> MipLevel, 1));
+		const FIntPoint DispatchThreadIDOffset(InViewportRect.Min.X >> MipLevel, InViewportRect.Min.Y >> MipLevel);
 
 		if (MipLevel == 0)
 		{
 			TShaderMapRef<FVARIDDirectCopyCS> DirectCopyComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-			FVARIDDirectCopyCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDDirectCopyCS::FParameters>();
+			FVARIDDirectCopyCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDDirectCopyCS::FParameters>();
 			PassParameters->DispatchThreadIDOffset = DispatchThreadIDOffset;
-			PassParameters->InSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InTexture, 0));
-			PassParameters->OutUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutTexture, 0));
+			PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InTexture, 0));
+			PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutTexture, 0));
 
 			FComputeShaderUtils::AddPass(
-				GraphBuilder,
+				InGraphBuilder,
 				RDG_EVENT_NAME("VARID - Direct Copy - MipLevel=%d", MipLevel),
 				DirectCopyComputeShader,
 				PassParameters,
@@ -953,15 +956,15 @@ static bool BuildPyramidCopy_RenderThread(FRDGBuilder& GraphBuilder, FRDGTexture
 		}
 		else
 		{
-			FVARIDBasicResampleCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
+			FVARIDBasicResampleCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
 			PassParameters->InDispatchThreadIDOffset = DispatchThreadIDOffset;
 			PassParameters->InTexelSize = TexelSize;
-			PassParameters->InSampler = Sampler;
-			PassParameters->InSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutTexture, MipLevel - 1));	// SRV is for a different mip level to the UAV - therefore Texture can appear to be both input and output
-			PassParameters->OutUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutTexture, MipLevel));
+			PassParameters->InSampler = InSampler;
+			PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutTexture, MipLevel - 1));	// SRV is for a different mip level to the UAV - therefore Texture can appear to be both input and output
+			PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutTexture, MipLevel));
 
 			FComputeShaderUtils::AddPass(
-				GraphBuilder,
+				InGraphBuilder,
 				RDG_EVENT_NAME("VARID - Build Pyramid Copy - Downsample - MipLevel=%d", MipLevel),
 				ResampleComputeShader,
 				PassParameters,
@@ -972,14 +975,14 @@ static bool BuildPyramidCopy_RenderThread(FRDGBuilder& GraphBuilder, FRDGTexture
 	return true;
 }
 
-static void BuildGaussianPyramid_RenderThread(FRDGBuilder& GraphBuilder, FRDGTextureRef InTexture, FRDGTextureRef OutGaussianMipTexture, const FIntRect& ViewportRect)
+static void BuildGaussianPyramid_RenderThread(FRDGBuilder& InGraphBuilder, FRDGTextureRef InTexture, FRDGTextureRef OutGaussianMipTexture, const FIntRect& InViewportRect)
 {
 	check(InTexture);
 	check(OutGaussianMipTexture);
 
 	const FRDGTextureDesc& OutGaussianMipTextureDesc = OutGaussianMipTexture->Desc;
 
-	FRDGTextureRef BlurredMipTexture = GraphBuilder.CreateTexture(OutGaussianMipTextureDesc, TEXT("VARID_TEMP_MipsRenderTargetTexture"));
+	FRDGTextureRef BlurredMipTexture = InGraphBuilder.CreateTexture(OutGaussianMipTextureDesc, TEXT("VARID_TEMP_MipsRenderTargetTexture"));
 
 	TShaderMapRef<FVARIDGaussianBlurCS> GaussianBlurComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	TShaderMapRef<FVARIDBasicResampleCS> ResampleComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
@@ -988,18 +991,18 @@ static void BuildGaussianPyramid_RenderThread(FRDGBuilder& GraphBuilder, FRDGTex
 	{
 		if (MipLevel == 0)
 		{
-			const FIntPoint DispatchSize = ViewportRect.Size();
-			const FIntPoint DispatchThreadIDOffset = ViewportRect.Min;
+			const FIntPoint DispatchSize = InViewportRect.Size();
+			const FIntPoint DispatchThreadIDOffset = InViewportRect.Min;
 
 			TShaderMapRef<FVARIDDirectCopyCS> DirectCopyComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
-			FVARIDDirectCopyCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDDirectCopyCS::FParameters>();
+			FVARIDDirectCopyCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDDirectCopyCS::FParameters>();
 			PassParameters->DispatchThreadIDOffset = DispatchThreadIDOffset;
-			PassParameters->InSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InTexture, 0));
-			PassParameters->OutUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutGaussianMipTexture, 0));
+			PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InTexture, 0));
+			PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutGaussianMipTexture, 0));
 
 			FComputeShaderUtils::AddPass(
-				GraphBuilder,
+				InGraphBuilder,
 				RDG_EVENT_NAME("VARID - Build Gaussian Pyramid - Direct Copy - MipLevel=%d", 0),
 				DirectCopyComputeShader,
 				PassParameters,
@@ -1013,48 +1016,51 @@ static void BuildGaussianPyramid_RenderThread(FRDGBuilder& GraphBuilder, FRDGTex
 			const FIntPoint LoResTextureSize(FMath::Max(OutGaussianMipTextureDesc.Extent.X >> LoResMipLevel, 1), FMath::Max(OutGaussianMipTextureDesc.Extent.Y >> LoResMipLevel, 1));
 			const FVector2D LoResTexelSize(1.0f / LoResTextureSize.X, 1.0f / LoResTextureSize.Y);
 
-			const FIntPoint LoResDispatchSize(FMath::Max(ViewportRect.Width() >> LoResMipLevel, 1), FMath::Max(ViewportRect.Height() >> LoResMipLevel, 1));
-			const FIntPoint LoResDispatchThreadIDOffset(ViewportRect.Min.X >> LoResMipLevel, ViewportRect.Min.Y >> LoResMipLevel);
+			const FIntPoint LoResDispatchSize(FMath::Max(InViewportRect.Width() >> LoResMipLevel, 1), FMath::Max(InViewportRect.Height() >> LoResMipLevel, 1));
+			const FIntPoint LoResDispatchThreadIDOffset(InViewportRect.Min.X >> LoResMipLevel, InViewportRect.Min.Y >> LoResMipLevel);
 
-			const FIntPoint HiResDispatchSize(FMath::Max(ViewportRect.Width() >> HiResMipLevel, 1), FMath::Max(ViewportRect.Height() >> HiResMipLevel, 1));
-			const FIntPoint HiResDispatchThreadIDOffset(ViewportRect.Min.X >> HiResMipLevel, ViewportRect.Min.Y >> HiResMipLevel);
+			const FIntPoint HiResDispatchSize(FMath::Max(InViewportRect.Width() >> HiResMipLevel, 1), FMath::Max(InViewportRect.Height() >> HiResMipLevel, 1));
+			const FIntPoint HiResDispatchThreadIDOffset(InViewportRect.Min.X >> HiResMipLevel, InViewportRect.Min.Y >> HiResMipLevel);
 
 			// DONT downsample THEN Filter. Noise will alias back in. 
 			// DO filter THEN downsample
 
-			// blur
-			FVARIDGaussianBlurCS::FParameters* GaussianBlurPassParameters = GraphBuilder.AllocParameters<FVARIDGaussianBlurCS::FParameters>();
-			GaussianBlurPassParameters->DispatchThreadIDOffset = HiResDispatchThreadIDOffset;
-			GaussianBlurPassParameters->InSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutGaussianMipTexture, HiResMipLevel));
-			GaussianBlurPassParameters->OutUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(BlurredMipTexture, HiResMipLevel));
+			{
+				// blur
+				FVARIDGaussianBlurCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDGaussianBlurCS::FParameters>();
+				PassParameters->DispatchThreadIDOffset = HiResDispatchThreadIDOffset;
+				PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutGaussianMipTexture, HiResMipLevel));
+				PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(BlurredMipTexture, HiResMipLevel));
 
-			FComputeShaderUtils::AddPass(
-				GraphBuilder,
-				RDG_EVENT_NAME("VARID - Build Gaussian Pyramid - Gaussian Blur - MipLevel=%d", HiResMipLevel),
-				GaussianBlurComputeShader,
-				GaussianBlurPassParameters,
-				FComputeShaderUtils::GetGroupCount(HiResDispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
+				FComputeShaderUtils::AddPass(
+					InGraphBuilder,
+					RDG_EVENT_NAME("VARID - Build Gaussian Pyramid - Gaussian Blur - MipLevel=%d", HiResMipLevel),
+					GaussianBlurComputeShader,
+					PassParameters,
+					FComputeShaderUtils::GetGroupCount(HiResDispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
+			}
 
+			{
+				// downsample
+				FVARIDBasicResampleCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
+				PassParameters->InDispatchThreadIDOffset = LoResDispatchThreadIDOffset;
+				PassParameters->InTexelSize = LoResTexelSize;
+				PassParameters->InSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
+				PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(BlurredMipTexture, HiResMipLevel));
+				PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutGaussianMipTexture, LoResMipLevel));
 
-			// downsample
-			FVARIDBasicResampleCS::FParameters* ResamplePassParameters = GraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
-			ResamplePassParameters->InDispatchThreadIDOffset = LoResDispatchThreadIDOffset;
-			ResamplePassParameters->InTexelSize = LoResTexelSize;
-			ResamplePassParameters->InSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-			ResamplePassParameters->InSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(BlurredMipTexture, HiResMipLevel));
-			ResamplePassParameters->OutUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutGaussianMipTexture, LoResMipLevel));
-
-			FComputeShaderUtils::AddPass(
-				GraphBuilder,
-				RDG_EVENT_NAME("VARID - Build Gaussian Pyramid - Downsample - MipLevel=%d", LoResMipLevel),
-				ResampleComputeShader,
-				ResamplePassParameters,
-				FComputeShaderUtils::GetGroupCount(LoResDispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
+				FComputeShaderUtils::AddPass(
+					InGraphBuilder,
+					RDG_EVENT_NAME("VARID - Build Gaussian Pyramid - Downsample - MipLevel=%d", LoResMipLevel),
+					ResampleComputeShader,
+					PassParameters,
+					FComputeShaderUtils::GetGroupCount(LoResDispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
+			}
 		}
 	}
 }
 
-static void BuildLaplacianPyramid_RenderThread(FRDGBuilder& GraphBuilder, FRDGTextureRef InGaussianMipTexture, FRDGTextureRef OutLaplacianMipTexture, const FIntRect& ViewportRect)
+static void BuildLaplacianPyramid_RenderThread(FRDGBuilder& InGraphBuilder, FRDGTextureRef InGaussianMipTexture, FRDGTextureRef OutLaplacianMipTexture, const FIntRect& InViewportRect)
 {
 	check(InGaussianMipTexture);
 	check(OutLaplacianMipTexture);
@@ -1063,8 +1069,8 @@ static void BuildLaplacianPyramid_RenderThread(FRDGBuilder& GraphBuilder, FRDGTe
 
 	uint32 MaxMipLevelIndex = InGaussianMipTexture->Desc.NumMips - 1;	// convert to zero based index
 
-	FRDGTextureRef UpsampledMipTexture = GraphBuilder.CreateTexture(OutLaplacianMipTextureDesc, TEXT("VARID_TEMP_UpsampledMipTexture"));
-	FRDGTextureRef BlurredMipTexture = GraphBuilder.CreateTexture(OutLaplacianMipTextureDesc, TEXT("VARID_TEMP_BlurredMipTexture"));
+	FRDGTextureRef UpsampledMipTexture = InGraphBuilder.CreateTexture(OutLaplacianMipTextureDesc, TEXT("VARID_TEMP_UpsampledMipTexture"));
+	FRDGTextureRef BlurredMipTexture = InGraphBuilder.CreateTexture(OutLaplacianMipTextureDesc, TEXT("VARID_TEMP_BlurredMipTexture"));
 
 	TShaderMapRef<FVARIDBasicResampleCS> ResampleComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	TShaderMapRef<FVARIDGaussianBlurCS> GaussianBlurComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
@@ -1075,18 +1081,18 @@ static void BuildLaplacianPyramid_RenderThread(FRDGBuilder& GraphBuilder, FRDGTe
 	{
 		if (MipLevel == MaxMipLevelIndex)
 		{
-			const FIntPoint DispatchSize(FMath::Max(ViewportRect.Width() >> MipLevel, 1), FMath::Max(ViewportRect.Height() >> MipLevel, 1));
-			const FIntPoint DispatchThreadIDOffset(ViewportRect.Min.X >> MipLevel, ViewportRect.Min.Y >> MipLevel);
+			const FIntPoint DispatchSize(FMath::Max(InViewportRect.Width() >> MipLevel, 1), FMath::Max(InViewportRect.Height() >> MipLevel, 1));
+			const FIntPoint DispatchThreadIDOffset(InViewportRect.Min.X >> MipLevel, InViewportRect.Min.Y >> MipLevel);
 
 			TShaderMapRef<FVARIDDirectCopyCS> DirectCopyComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
-			FVARIDDirectCopyCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDDirectCopyCS::FParameters>();
+			FVARIDDirectCopyCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDDirectCopyCS::FParameters>();
 			PassParameters->DispatchThreadIDOffset = DispatchThreadIDOffset;
-			PassParameters->InSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InGaussianMipTexture, MipLevel));
-			PassParameters->OutUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutLaplacianMipTexture, MipLevel));
+			PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InGaussianMipTexture, MipLevel));
+			PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutLaplacianMipTexture, MipLevel));
 
 			FComputeShaderUtils::AddPass(
-				GraphBuilder,
+				InGraphBuilder,
 				RDG_EVENT_NAME("VARID - Build Laplacian Pyramid - Direct Copy - MipLevel=%d", MipLevel),
 				DirectCopyComputeShader,
 				PassParameters,
@@ -1100,23 +1106,23 @@ static void BuildLaplacianPyramid_RenderThread(FRDGBuilder& GraphBuilder, FRDGTe
 			const FIntPoint HiResTextureSize(FMath::Max(OutLaplacianMipTextureDesc.Extent.X >> HiResMipLevel, 1), FMath::Max(OutLaplacianMipTextureDesc.Extent.Y >> HiResMipLevel, 1));
 			const FVector2D HiResTexelSize(1.0f / HiResTextureSize.X, 1.0f / HiResTextureSize.Y);
 
-			const FIntPoint LoResDispatchSize(FMath::Max(ViewportRect.Width() >> LoResMipLevel, 1), FMath::Max(ViewportRect.Height() >> LoResMipLevel, 1));
-			const FIntPoint LoResDispatchThreadIDOffset(ViewportRect.Min.X >> LoResMipLevel, ViewportRect.Min.Y >> LoResMipLevel);
+			const FIntPoint LoResDispatchSize(FMath::Max(InViewportRect.Width() >> LoResMipLevel, 1), FMath::Max(InViewportRect.Height() >> LoResMipLevel, 1));
+			const FIntPoint LoResDispatchThreadIDOffset(InViewportRect.Min.X >> LoResMipLevel, InViewportRect.Min.Y >> LoResMipLevel);
 
-			const FIntPoint HiResDispatchSize(FMath::Max(ViewportRect.Width() >> HiResMipLevel, 1), FMath::Max(ViewportRect.Height() >> HiResMipLevel, 1));
-			const FIntPoint HiResDispatchThreadIDOffset(ViewportRect.Min.X >> HiResMipLevel, ViewportRect.Min.Y >> HiResMipLevel);
+			const FIntPoint HiResDispatchSize(FMath::Max(InViewportRect.Width() >> HiResMipLevel, 1), FMath::Max(InViewportRect.Height() >> HiResMipLevel, 1));
+			const FIntPoint HiResDispatchThreadIDOffset(InViewportRect.Min.X >> HiResMipLevel, InViewportRect.Min.Y >> HiResMipLevel);
 
 			{
 				// upsample
-				FVARIDBasicResampleCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
+				FVARIDBasicResampleCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
 				PassParameters->InDispatchThreadIDOffset = HiResDispatchThreadIDOffset;
 				PassParameters->InTexelSize = HiResTexelSize;
 				PassParameters->InSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-				PassParameters->InSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InGaussianMipTexture, LoResMipLevel));
-				PassParameters->OutUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(UpsampledMipTexture, HiResMipLevel));
+				PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InGaussianMipTexture, LoResMipLevel));
+				PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(UpsampledMipTexture, HiResMipLevel));
 
 				FComputeShaderUtils::AddPass(
-					GraphBuilder,
+					InGraphBuilder,
 					RDG_EVENT_NAME("VARID - Build Laplacian Pyramid - Upsample - MipLevel=%d", HiResMipLevel),
 					ResampleComputeShader,
 					PassParameters,
@@ -1125,13 +1131,13 @@ static void BuildLaplacianPyramid_RenderThread(FRDGBuilder& GraphBuilder, FRDGTe
 
 			{
 				// blur
-				FVARIDGaussianBlurCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDGaussianBlurCS::FParameters>();
+				FVARIDGaussianBlurCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDGaussianBlurCS::FParameters>();
 				PassParameters->DispatchThreadIDOffset = HiResDispatchThreadIDOffset;
-				PassParameters->InSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(UpsampledMipTexture, HiResMipLevel));
-				PassParameters->OutUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(BlurredMipTexture, HiResMipLevel));
+				PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(UpsampledMipTexture, HiResMipLevel));
+				PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(BlurredMipTexture, HiResMipLevel));
 
 				FComputeShaderUtils::AddPass(
-					GraphBuilder,
+					InGraphBuilder,
 					RDG_EVENT_NAME("VARID - Build Laplacian Pyramid - Gaussian Blur - MipLevel=%d", HiResMipLevel),
 					GaussianBlurComputeShader,
 					PassParameters,
@@ -1140,14 +1146,14 @@ static void BuildLaplacianPyramid_RenderThread(FRDGBuilder& GraphBuilder, FRDGTe
 
 			{
 				// laplacian
-				FVARIDLaplacianCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDLaplacianCS::FParameters>();
+				FVARIDLaplacianCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDLaplacianCS::FParameters>();
 				PassParameters->DispatchThreadIDOffset = HiResDispatchThreadIDOffset;
-				PassParameters->InLoResSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(BlurredMipTexture, HiResMipLevel));
-				PassParameters->InHiResSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InGaussianMipTexture, HiResMipLevel));
-				PassParameters->OutLaplacianUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutLaplacianMipTexture, HiResMipLevel));
+				PassParameters->InLoResSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(BlurredMipTexture, HiResMipLevel));
+				PassParameters->InHiResSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InGaussianMipTexture, HiResMipLevel));
+				PassParameters->OutLaplacianUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutLaplacianMipTexture, HiResMipLevel));
 
 				FComputeShaderUtils::AddPass(
-					GraphBuilder,
+					InGraphBuilder,
 					RDG_EVENT_NAME("VARID - Build Laplacian Pyramid - Laplacian - MipLevel=%d", HiResMipLevel),
 					LaplacianComputeShader,
 					PassParameters,
@@ -1157,7 +1163,7 @@ static void BuildLaplacianPyramid_RenderThread(FRDGBuilder& GraphBuilder, FRDGTe
 	}
 }
 
-static void BuildContrastTexture_RenderThread(FRDGBuilder& GraphBuilder, FRDGTextureRef InLaplacianMipTexture, FRDGTextureRef InVFMapMipTexture, FRDGTextureRef OutContrastTexture, const FIntRect& ViewportRect)
+static void BuildContrastTexture_RenderThread(FRDGBuilder& InGraphBuilder, FRDGTextureRef InLaplacianMipTexture, FRDGTextureRef InVFMapMipTexture, FRDGTextureRef OutContrastTexture, const FIntRect& InViewportRect)
 {
 	check(InLaplacianMipTexture);
 	check(OutContrastTexture);
@@ -1176,8 +1182,8 @@ static void BuildContrastTexture_RenderThread(FRDGBuilder& GraphBuilder, FRDGTex
 
 	const int32 MaxMipLevelIndex = ContrastNumberOfMips - 1;
 
-	FRDGTextureRef UpsampledMipTexture = GraphBuilder.CreateTexture(OutContrastTextureDesc, TEXT("VARID_TEMP_UpsampledMipTexture"));
-	FRDGTextureRef BlurredMipTexture = GraphBuilder.CreateTexture(OutContrastTextureDesc, TEXT("VARID_TEMP_BlurredMipTexture"));
+	FRDGTextureRef UpsampledMipTexture = InGraphBuilder.CreateTexture(OutContrastTextureDesc, TEXT("VARID_TEMP_UpsampledMipTexture"));
+	FRDGTextureRef BlurredMipTexture = InGraphBuilder.CreateTexture(OutContrastTextureDesc, TEXT("VARID_TEMP_BlurredMipTexture"));
 
 	TShaderMapRef<FVARIDBasicResampleCS> ResampleComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	TShaderMapRef<FVARIDGaussianBlurCS> GaussianBlurComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
@@ -1190,18 +1196,18 @@ static void BuildContrastTexture_RenderThread(FRDGBuilder& GraphBuilder, FRDGTex
 		if (MipLevel == MaxMipLevelIndex)
 		{
 			// lowest res level is simply a direct copy. no bias applied
-			const FIntPoint DispatchSize(FMath::Max(ViewportRect.Width() >> MipLevel, 1), FMath::Max(ViewportRect.Height() >> MipLevel, 1));
-			const FIntPoint DispatchThreadIDOffset(ViewportRect.Min.X >> MipLevel, ViewportRect.Min.Y >> MipLevel);
+			const FIntPoint DispatchSize(FMath::Max(InViewportRect.Width() >> MipLevel, 1), FMath::Max(InViewportRect.Height() >> MipLevel, 1));
+			const FIntPoint DispatchThreadIDOffset(InViewportRect.Min.X >> MipLevel, InViewportRect.Min.Y >> MipLevel);
 
 			TShaderMapRef<FVARIDDirectCopyCS> DirectCopyComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
-			FVARIDDirectCopyCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDDirectCopyCS::FParameters>();
+			FVARIDDirectCopyCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDDirectCopyCS::FParameters>();
 			PassParameters->DispatchThreadIDOffset = DispatchThreadIDOffset;
-			PassParameters->InSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InLaplacianMipTexture, MipLevel));
-			PassParameters->OutUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutContrastTexture, MipLevel));
+			PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InLaplacianMipTexture, MipLevel));
+			PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutContrastTexture, MipLevel));
 
 			FComputeShaderUtils::AddPass(
-				GraphBuilder,
+				InGraphBuilder,
 				RDG_EVENT_NAME("VARID - Build Contrast Texture - Direct Copy - MipLevel=%d", MipLevel),
 				DirectCopyComputeShader,
 				PassParameters,
@@ -1215,20 +1221,20 @@ static void BuildContrastTexture_RenderThread(FRDGBuilder& GraphBuilder, FRDGTex
 			const FIntPoint HiResTextureSize(FMath::Max(OutContrastTextureDesc.Extent.X >> HiResMipLevel, 1), FMath::Max(OutContrastTextureDesc.Extent.Y >> HiResMipLevel, 1));
 			const FVector2D HiResTexelSize(1.0f / HiResTextureSize.X, 1.0f / HiResTextureSize.Y);
 
-			const FIntPoint HiResDispatchSize(FMath::Max(ViewportRect.Width() >> HiResMipLevel, 1), FMath::Max(ViewportRect.Height() >> HiResMipLevel, 1));
-			const FIntPoint HiResDispatchThreadIDOffset(ViewportRect.Min.X >> HiResMipLevel, ViewportRect.Min.Y >> HiResMipLevel);
+			const FIntPoint HiResDispatchSize(FMath::Max(InViewportRect.Width() >> HiResMipLevel, 1), FMath::Max(InViewportRect.Height() >> HiResMipLevel, 1));
+			const FIntPoint HiResDispatchThreadIDOffset(InViewportRect.Min.X >> HiResMipLevel, InViewportRect.Min.Y >> HiResMipLevel);
 
 			{
 				// upsample
-				FVARIDBasicResampleCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
+				FVARIDBasicResampleCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
 				PassParameters->InDispatchThreadIDOffset = HiResDispatchThreadIDOffset;
 				PassParameters->InTexelSize = HiResTexelSize;
 				PassParameters->InSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-				PassParameters->InSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutContrastTexture, LoResMipLevel));
-				PassParameters->OutUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(UpsampledMipTexture, HiResMipLevel));
+				PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutContrastTexture, LoResMipLevel));
+				PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(UpsampledMipTexture, HiResMipLevel));
 
 				FComputeShaderUtils::AddPass(
-					GraphBuilder,
+					InGraphBuilder,
 					RDG_EVENT_NAME("VARID - Build Contrast Texture - Upsample - MipLevel=%d", HiResMipLevel),
 					ResampleComputeShader,
 					PassParameters,
@@ -1237,13 +1243,13 @@ static void BuildContrastTexture_RenderThread(FRDGBuilder& GraphBuilder, FRDGTex
 
 			{
 				// blur
-				FVARIDGaussianBlurCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDGaussianBlurCS::FParameters>();
+				FVARIDGaussianBlurCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDGaussianBlurCS::FParameters>();
 				PassParameters->DispatchThreadIDOffset = HiResDispatchThreadIDOffset;
-				PassParameters->InSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(UpsampledMipTexture, HiResMipLevel));
-				PassParameters->OutUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(BlurredMipTexture, HiResMipLevel));
+				PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(UpsampledMipTexture, HiResMipLevel));
+				PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(BlurredMipTexture, HiResMipLevel));
 
 				FComputeShaderUtils::AddPass(
-					GraphBuilder,
+					InGraphBuilder,
 					RDG_EVENT_NAME("VARID - Build Contrast Texture - Gaussian Blur - MipLevel=%d", HiResMipLevel),
 					GaussianBlurComputeShader,
 					PassParameters,
@@ -1252,15 +1258,15 @@ static void BuildContrastTexture_RenderThread(FRDGBuilder& GraphBuilder, FRDGTex
 
 			{
 				// combine laplace and gaussian to reconstruct original image
-				FVARIDReconstructCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDReconstructCS::FParameters>();
+				FVARIDReconstructCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDReconstructCS::FParameters>();
 				PassParameters->InDispatchThreadIDOffset = HiResDispatchThreadIDOffset;
-				PassParameters->InGaussianSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(BlurredMipTexture, HiResMipLevel));
-				PassParameters->InLaplacianSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InLaplacianMipTexture, HiResMipLevel));
-				PassParameters->InVFMapSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapMipTexture, HiResMipLevel));
-				PassParameters->OutUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutContrastTexture, HiResMipLevel));
+				PassParameters->InGaussianSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(BlurredMipTexture, HiResMipLevel));
+				PassParameters->InLaplacianSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InLaplacianMipTexture, HiResMipLevel));
+				PassParameters->InVFMapSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapMipTexture, HiResMipLevel));
+				PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutContrastTexture, HiResMipLevel));
 
 				FComputeShaderUtils::AddPass(
-					GraphBuilder,
+					InGraphBuilder,
 					RDG_EVENT_NAME("VARID - Build Contrast Texture - Reconstruct - MipLevel=%d", HiResMipLevel),
 					ReconstructComputeShader,
 					PassParameters,
@@ -1270,9 +1276,9 @@ static void BuildContrastTexture_RenderThread(FRDGBuilder& GraphBuilder, FRDGTex
 	}
 }
 
-static bool BuildInpaintTexturePIXMIX_RenderThread(FRDGBuilder& GraphBuilder, FRDGTextureRef InOriginalTexture, FRDGTextureRef InVFMapTexture, FRDGTextureRef OutPositionMipTexture, const FIntRect& ViewportRect)
+static bool BuildInpaintTexturePIXMIX_RenderThread(FRDGBuilder& InGraphBuilder, FRDGTextureRef InColourTexture, FRDGTextureRef InVFMapTexture, FRDGTextureRef OutPositionMipTexture, const FIntRect& InViewportRect)
 {
-	check(InOriginalTexture);
+	check(InColourTexture);
 	check(InVFMapTexture);
 	check(OutPositionMipTexture);
 
@@ -1280,7 +1286,7 @@ static bool BuildInpaintTexturePIXMIX_RenderThread(FRDGBuilder& GraphBuilder, FR
 	// We use a point sampler as we dont want any interpolation of the mask values. should be either black (0) or white (1)
 	// TODO remove? ahhh but then wouldnt be able to do pixel id addressing - would have to use sampleLevel()
 	// TODO only generate levels we actually use - so not down to 1x1...
-	if (!BuildPyramid_RenderThread(GraphBuilder, InVFMapTexture, TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI(), ViewportRect))
+	if (!BuildPyramid_RenderThread(InGraphBuilder, InVFMapTexture, TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI(), InViewportRect))
 	{
 		return false;
 	}
@@ -1288,7 +1294,7 @@ static bool BuildInpaintTexturePIXMIX_RenderThread(FRDGBuilder& GraphBuilder, FR
 	const FRDGTextureDesc& OutTextureDesc = OutPositionMipTexture->Desc;
 	const int32 OriginalTextureWidth = OutTextureDesc.Extent.X;
 	const int32 OriginalTextureHeight = OutTextureDesc.Extent.Y;
-	const int32 OriginalTextureOriginOffset = ViewportRect.Min.X > 0 ? OriginalTextureWidth / 2 : 0;
+	const int32 OriginalTextureOriginOffset = InViewportRect.Min.X > 0 ? OriginalTextureWidth / 2 : 0;
 	const int32 MaxNumberOfCostReducingIterations = 1;
 	const int32 NumberOfMips = 6;// OutTextureDesc.NumMips;
 	const int32 MaxMipLevelIndex = NumberOfMips - 1;	// offset for zero based index
@@ -1303,7 +1309,7 @@ static bool BuildInpaintTexturePIXMIX_RenderThread(FRDGBuilder& GraphBuilder, FR
 		1
 	);
 
-	FRDGTextureRef PositionCostMipTexture = GraphBuilder.CreateTexture(PositionCostMipTextureDesc, TEXT("PositionCostMipTexture"));
+	FRDGTextureRef PositionCostMipTexture = InGraphBuilder.CreateTexture(PositionCostMipTextureDesc, TEXT("PositionCostMipTexture"));
 
 	// all shaders
 	TShaderMapRef<FVARIDInpainterRandomPositionCS> RandomPositionMapShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
@@ -1319,15 +1325,15 @@ static bool BuildInpaintTexturePIXMIX_RenderThread(FRDGBuilder& GraphBuilder, FR
 		const FIntPoint InitDispatchThreadIDOffset(OriginalTextureOriginOffset >> MaxMipLevelIndex, 0);
 
 		{
-			FVARIDInpainterRandomPositionCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDInpainterRandomPositionCS::FParameters>();
+			FVARIDInpainterRandomPositionCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDInpainterRandomPositionCS::FParameters>();
 			PassParameters->InDispatchThreadIDOffset = InitDispatchThreadIDOffset;
 			PassParameters->InTexelSize = InitTexelSize;
 			PassParameters->InBilinearSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 			PassParameters->InPointSampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-			PassParameters->InMaskSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, MaxMipLevelIndex));
-			PassParameters->OutPositionUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutPositionMipTexture, MaxMipLevelIndex));
+			PassParameters->InMaskSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, MaxMipLevelIndex));
+			PassParameters->OutPositionUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutPositionMipTexture, MaxMipLevelIndex));
 			FComputeShaderUtils::AddPass(
-				GraphBuilder,
+				InGraphBuilder,
 				RDG_EVENT_NAME("VARID - Inpainter - Generate Random Positions - MipLevel=%d", MaxMipLevelIndex),
 				RandomPositionMapShader,
 				PassParameters,
@@ -1358,20 +1364,20 @@ static bool BuildInpaintTexturePIXMIX_RenderThread(FRDGBuilder& GraphBuilder, FR
 			//		outputs: position
 
 			{
-				FVARIDInpainterCostCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDInpainterCostCS::FParameters>();
+				FVARIDInpainterCostCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDInpainterCostCS::FParameters>();
 				PassParameters->InDispatchThreadIDOffset = DispatchThreadIDOffset;
 				PassParameters->InTexelSize = TexelSize;
 				PassParameters->InBilinearSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 				PassParameters->InPointSampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 				PassParameters->InTextureSize = TextureSize;
 				PassParameters->InFloatMax = FLT_MAX;
-				PassParameters->InColourSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InOriginalTexture, MipLevel));	// colour used for appearance cost calculation. 
-				PassParameters->InMaskSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, MipLevel));
-				PassParameters->InPositionSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutPositionMipTexture, MipLevel));
-				PassParameters->OutPositionCostUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(PositionCostMipTexture, MipLevel));
+				PassParameters->InColourSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InColourTexture, MipLevel));	// colour used for appearance cost calculation. 
+				PassParameters->InMaskSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, MipLevel));
+				PassParameters->InPositionSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutPositionMipTexture, MipLevel));
+				PassParameters->OutPositionCostUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(PositionCostMipTexture, MipLevel));
 
 				FComputeShaderUtils::AddPass(
-					GraphBuilder,
+					InGraphBuilder,
 					RDG_EVENT_NAME("VARID - Inpainter - Calc Position Cost - MipLevel=%d - CostReducingIteration=%d", MipLevel, CostReducingIteration),
 					CostShader,
 					PassParameters,
@@ -1379,19 +1385,19 @@ static bool BuildInpaintTexturePIXMIX_RenderThread(FRDGBuilder& GraphBuilder, FR
 			}
 
 			{
-				FVARIDInpainterPropagateCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDInpainterPropagateCS::FParameters>();
+				FVARIDInpainterPropagateCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDInpainterPropagateCS::FParameters>();
 				PassParameters->InDispatchThreadIDOffset = DispatchThreadIDOffset;
 				PassParameters->InTexelSize = TexelSize;
 				PassParameters->InBilinearSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 				PassParameters->InPointSampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 				PassParameters->InTextureSize = TextureSize;
-				PassParameters->InColourSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InOriginalTexture, MipLevel));	// colour used for appearance cost calculation. 
-				PassParameters->InMaskSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, MipLevel));
-				PassParameters->InPositionCostSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(PositionCostMipTexture, MipLevel));
-				PassParameters->OutPositionUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutPositionMipTexture, MipLevel));
+				PassParameters->InColourSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InColourTexture, MipLevel));	// colour used for appearance cost calculation. 
+				PassParameters->InMaskSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, MipLevel));
+				PassParameters->InPositionCostSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(PositionCostMipTexture, MipLevel));
+				PassParameters->OutPositionUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutPositionMipTexture, MipLevel));
 				
 				FComputeShaderUtils::AddPass(
-					GraphBuilder,
+					InGraphBuilder,
 					RDG_EVENT_NAME("VARID - Inpainter - Propagate Low cost Positions - MipLevel=%d - CostReducingIteration=%d", MipLevel, CostReducingIteration),
 					PropagateShader,
 					PassParameters,
@@ -1411,15 +1417,15 @@ static bool BuildInpaintTexturePIXMIX_RenderThread(FRDGBuilder& GraphBuilder, FR
 			const FIntPoint UpsampledDispatchThreadIDOffset(OriginalTextureOriginOffset >> HiResMipLevel, 0);
 
 			{
-				FVARIDBasicResampleCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
+				FVARIDBasicResampleCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
 				PassParameters->InDispatchThreadIDOffset = UpsampledDispatchThreadIDOffset;
 				PassParameters->InTexelSize = UpsampledTexelSize;
 				PassParameters->InSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-				PassParameters->InSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutPositionMipTexture, LoResMipLevel));
-				PassParameters->OutUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutPositionMipTexture, HiResMipLevel));
+				PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutPositionMipTexture, LoResMipLevel));
+				PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutPositionMipTexture, HiResMipLevel));
 
 				FComputeShaderUtils::AddPass(
-					GraphBuilder,
+					InGraphBuilder,
 					RDG_EVENT_NAME("VARID - Inpainter - Position Upsample - MipLevel=%d", MipLevel),
 					ResampleComputeShader,
 					PassParameters,
@@ -1431,70 +1437,101 @@ static bool BuildInpaintTexturePIXMIX_RenderThread(FRDGBuilder& GraphBuilder, FR
 	return true;
 }
 
-static bool BuildInpaintTexture_RenderThread(FRDGBuilder& GraphBuilder, FRDGTextureRef InOriginalTexture, FRDGTextureRef InVFMapTexture, FRDGTextureRef OutPositionMipTexture, const FIntRect& ViewportRect)
+static bool BuildInpaintTexture_RenderThread(FRDGBuilder& InGraphBuilder, FRDGTextureRef InColourTexture, FRDGTextureRef InVFMapTexture, FRDGTextureRef OutPositionMipTexture, FRDGTextureRef OutColourTexture, const FIntRect& InViewportRect)
 {
-	check(InOriginalTexture);
+	check(InColourTexture);
 	check(InVFMapTexture);
 	check(OutPositionMipTexture);
 
 	// VF map when passed in only has mip level: zero - but it can take more levels. Populate them here. 
 	// We use a point sampler as we dont want any interpolation of the mask values. should be either black (0) or white (1)
 	// TODO remove? ahhh but then wouldnt be able to do pixel id addressing - would have to use sampleLevel()
-	// TODO only generate level we actually use - so not down to 1x1...
-	if (!BuildPyramid_RenderThread(GraphBuilder, InVFMapTexture, TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI(), ViewportRect))
+	// TODO only generate level we actually use - so not down to 1x1... just use a resample shader - not a pyramid shader
+	// IS it better to downsample once at beginnning for entire image or use sampleLevel for every pixel
+	if (!BuildPyramid_RenderThread(InGraphBuilder, InVFMapTexture, TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI(), InViewportRect))
 	{
 		return false;
 	}
 
-	const FRDGTextureDesc& OutTextureDesc = OutPositionMipTexture->Desc;
-	const int32 OriginalTextureWidth = OutTextureDesc.Extent.X;
-	const int32 OriginalTextureHeight = OutTextureDesc.Extent.Y;
-	const int32 OriginalTextureOriginOffset = ViewportRect.Min.X > 0 ? OriginalTextureWidth / 2 : 0;
+	const FRDGTextureDesc& OutColourTextureDesc = OutColourTexture->Desc;
+	const FRDGTextureDesc& OutPositionMipTextureDesc = OutPositionMipTexture->Desc;
+	const int32 OriginalTextureWidth = OutColourTextureDesc.Extent.X;
+	const int32 OriginalTextureHeight = OutColourTextureDesc.Extent.Y;
+	const int32 OriginalTextureOriginOffset = InViewportRect.Min.X > 0 ? OriginalTextureWidth / 2 : 0;
 	const FVector2D OriginalTexelSize(1.0f / OriginalTextureWidth, 1.0f / OriginalTextureHeight);
 	const FIntPoint OriginalDispatchSize(OriginalTextureWidth, OriginalTextureHeight);
 	const FIntPoint OriginalDispatchThreadIDOffset(OriginalTextureOriginOffset, 0);
 
-	const int32 NumberOfPasses = 20;
-	const int32 MetaDataMipLevel = 4;
-
-	// change 'inpainted mask' to 'meta data'
+	const int32 NumberOfPasses = 16;
+	const int32 PassMipLevel = 3;
+	const int32 NumMips = PassMipLevel + 1;
 
 	FRDGTextureDesc MetaDataTextureDesc = FRDGTextureDesc::Create2D
 	(
-		OutTextureDesc.Extent,
+		OutPositionMipTextureDesc.Extent,
 		EPixelFormat::PF_A32B32G32R32F,
 		FClearValueBinding::Black,
 		TexCreate_ShaderResource | TexCreate_UAV,
-		OutTextureDesc.NumMips,
+		NumMips, // careful..
 		1
 	);
 
-	FRDGTextureRef MetaDataTexture_1 = GraphBuilder.CreateTexture(MetaDataTextureDesc, TEXT("MetaDataTexture_1"));
-	FRDGTextureRef MetaDataTexture_2 = GraphBuilder.CreateTexture(MetaDataTextureDesc, TEXT("MetaDataTexture_2"));
-	FRDGTextureRef ColourTexture_1 = GraphBuilder.CreateTexture(InOriginalTexture->Desc, TEXT("ColourTexture_1"));
-	FRDGTextureRef ColourTexture_2 = GraphBuilder.CreateTexture(InOriginalTexture->Desc, TEXT("ColourTexture_2"));
+	// ensure we have a descriptor that can support mipmaps
+	FRDGTextureDesc ColourTextureDesc = FRDGTextureDesc::Create2D
+	(
+		OutColourTextureDesc.Extent,
+		OutColourTextureDesc.Format,
+		FClearValueBinding::Black,
+		TexCreate_ShaderResource | TexCreate_UAV,
+		NumMips,	// careful..
+		1
+	);
 
+	FRDGTextureRef MetaDataTexture_1 = InGraphBuilder.CreateTexture(MetaDataTextureDesc, TEXT("MetaDataTexture_1"));
+	FRDGTextureRef MetaDataTexture_2 = InGraphBuilder.CreateTexture(MetaDataTextureDesc, TEXT("MetaDataTexture_2"));
+	FRDGTextureRef ColourTexture_1 = InGraphBuilder.CreateTexture(ColourTextureDesc, TEXT("ColourTexture_1"));
+	FRDGTextureRef ColourTexture_2 = InGraphBuilder.CreateTexture(ColourTextureDesc, TEXT("ColourTexture_2"));
+
+	TShaderMapRef<FVARIDBasicResampleCS> ResampleComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	TShaderMapRef<FVARIDInpainterInitialiseCS> InpainterInitialiseShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	TShaderMapRef<FVARIDInpainterFillCS> InpainterShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	TShaderMapRef<FVARIDInpainterFinaliseCS> InpainterFinaliseShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+	TShaderMapRef<FVARIDDirectCopyMaskedCS> DirectCopyMaskedComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
-	const FIntPoint TextureSize(FMath::Max(OriginalTextureWidth >> MetaDataMipLevel, 1), FMath::Max(OriginalTextureHeight >> MetaDataMipLevel, 1));
+	const FIntPoint TextureSize(FMath::Max(OriginalTextureWidth >> PassMipLevel, 1), FMath::Max(OriginalTextureHeight >> PassMipLevel, 1));
 	const FVector2D TexelSize(1.0f / TextureSize.X, 1.0f / TextureSize.Y);
-	const FIntPoint DispatchSize(FMath::Max(OriginalTextureWidth >> MetaDataMipLevel, 1), FMath::Max(OriginalTextureHeight >> MetaDataMipLevel, 1));
-	const FIntPoint DispatchThreadIDOffset(OriginalTextureOriginOffset >> MetaDataMipLevel, 0);
+	const FIntPoint DispatchSize(FMath::Max(OriginalTextureWidth >> PassMipLevel, 1), FMath::Max(OriginalTextureHeight >> PassMipLevel, 1));
+	const FIntPoint DispatchThreadIDOffset(OriginalTextureOriginOffset >> PassMipLevel, 0);
 
 	// initialise
 	{
-		FVARIDInpainterInitialiseCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDInpainterInitialiseCS::FParameters>();
+		FVARIDInpainterInitialiseCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDInpainterInitialiseCS::FParameters>();
 		PassParameters->InDispatchThreadIDOffset = DispatchThreadIDOffset;
 		PassParameters->InTexelSize = TexelSize;
-		PassParameters->InMaskSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, MetaDataMipLevel));
-		PassParameters->OutMetaDataUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(MetaDataTexture_1, MetaDataMipLevel));
+		PassParameters->InMaskSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, PassMipLevel));
+		PassParameters->OutMetaDataUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(MetaDataTexture_1, PassMipLevel));
 		
 		FComputeShaderUtils::AddPass(
-			GraphBuilder,
-			RDG_EVENT_NAME("VARID - Inpainter - Initialise - MipLevel=%d", MetaDataMipLevel),
+			InGraphBuilder,
+			RDG_EVENT_NAME("VARID - Inpainter - Initialise - MipLevel=%d", PassMipLevel),
 			InpainterInitialiseShader,
+			PassParameters,
+			FComputeShaderUtils::GetGroupCount(DispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
+	}
+
+	// downsample colour
+	{
+		FVARIDBasicResampleCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
+		PassParameters->InDispatchThreadIDOffset = DispatchThreadIDOffset;
+		PassParameters->InTexelSize = TexelSize;
+		PassParameters->InSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
+		PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InColourTexture, 0));
+		PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(ColourTexture_1, PassMipLevel));
+
+		FComputeShaderUtils::AddPass(
+			InGraphBuilder,
+			RDG_EVENT_NAME("VARID - Inpainter - Downsample Colour - MipLevel=%d", PassMipLevel),
+			ResampleComputeShader,
 			PassParameters,
 			FComputeShaderUtils::GetGroupCount(DispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
 	}
@@ -1525,19 +1562,19 @@ static bool BuildInpaintTexture_RenderThread(FRDGBuilder& GraphBuilder, FRDGText
 		}
 
 		{
-			FVARIDInpainterFillCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDInpainterFillCS::FParameters>();
+			FVARIDInpainterFillCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDInpainterFillCS::FParameters>();
 			PassParameters->InDispatchThreadIDOffset = DispatchThreadIDOffset;
 			PassParameters->InTexelSize = TexelSize;
 			PassParameters->PassCounter = PassCounter;
-			PassParameters->InColourSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InColour, MetaDataMipLevel));
-			PassParameters->InMaskSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, MetaDataMipLevel));
-			PassParameters->InMetaDataSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InMetaData, MetaDataMipLevel));
-			PassParameters->OutMetaDataUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutMetaData, MetaDataMipLevel));
-			PassParameters->OutColourUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutColour, MetaDataMipLevel));
+			PassParameters->InColourSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InColour, PassMipLevel));
+			PassParameters->InMaskSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, PassMipLevel));
+			PassParameters->InMetaDataSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InMetaData, PassMipLevel));
+			PassParameters->OutMetaDataUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutMetaData, PassMipLevel));
+			PassParameters->OutColourUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutColour, PassMipLevel));
 
 			FComputeShaderUtils::AddPass(
-				GraphBuilder,
-				RDG_EVENT_NAME("VARID - Inpainter - MipLevel=%d - PassCounter=%d", MetaDataMipLevel, PassCounter),
+				InGraphBuilder,
+				RDG_EVENT_NAME("VARID - Inpainter - MipLevel=%d - PassCounter=%d", PassMipLevel, PassCounter),
 				InpainterShader,
 				PassParameters,
 				FComputeShaderUtils::GetGroupCount(DispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
@@ -1546,18 +1583,21 @@ static bool BuildInpaintTexture_RenderThread(FRDGBuilder& GraphBuilder, FRDGText
 
 	// finalise
 	{
-		FVARIDInpainterFinaliseCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FVARIDInpainterFinaliseCS::FParameters>();
+		FVARIDInpainterFinaliseCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDInpainterFinaliseCS::FParameters>();
 		PassParameters->InDispatchThreadIDOffset = OriginalDispatchThreadIDOffset;
 		PassParameters->InTexelSize = OriginalTexelSize;
 		PassParameters->InBilinearSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 		PassParameters->InPointSampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-		PassParameters->InColourSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InOriginalTexture, 0));
-		PassParameters->InMaskSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, 0));
-		PassParameters->InMetaDataSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutMetaData, MetaDataMipLevel));
-		PassParameters->OutPositionUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutPositionMipTexture, 0));
+		PassParameters->SamplerMipLevel = PassMipLevel;
+		PassParameters->InMaskSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, 0));
+		PassParameters->InMaskedColourSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutColour, PassMipLevel));
+		PassParameters->InUnmaskedColourSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InColourTexture, 0));
+		PassParameters->InMetaDataSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutMetaData, PassMipLevel));
+		PassParameters->OutPositionUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutPositionMipTexture, 0));
+		PassParameters->OutColourUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutColourTexture, 0));
 
 		FComputeShaderUtils::AddPass(
-			GraphBuilder,
+			InGraphBuilder,
 			RDG_EVENT_NAME("VARID - Inpainter - Finalise - MipLevel=%d", 0),
 			InpainterFinaliseShader,
 			PassParameters,
@@ -1709,7 +1749,6 @@ FScreenPassTexture FVARIDSceneViewExtension::PostProcessPassAfterTonemap_RenderT
 
 		NumberOfMipsToGenerate = FMath::Min(NumberOfMipsToGenerate, MAX_NUM_MIP_LEVELS);
 
-
 		/*************************************************************/
 
 		FRDGTextureDesc R32_FLOAT_TextureDesc = FRDGTextureDesc::Create2D
@@ -1815,7 +1854,8 @@ FScreenPassTexture FVARIDSceneViewExtension::PostProcessPassAfterTonemap_RenderT
 		BuildContrastTexture_RenderThread(GraphBuilder, LaplacianTexture, ContrastVFMapTexture, ContrastTexture, ViewportRect);
 
 		FRDGTextureRef InpaintPositionTexture = GraphBuilder.CreateTexture(G32R32F_TextureDesc, TEXT("InpaintPositionTexture"));
-		BuildInpaintTexture_RenderThread(GraphBuilder, ContrastTexture, InpaintVFMapTexture, InpaintPositionTexture, ViewportRect);	//outputs a position texture
+		FRDGTextureRef InpaintColourTexture = GraphBuilder.CreateTexture(R16G16B16A16_UNORM_TextureDesc, TEXT("InpaintColourTexture"));
+		BuildInpaintTexture_RenderThread(GraphBuilder, ContrastTexture, InpaintVFMapTexture, InpaintPositionTexture, InpaintColourTexture, ViewportRect);	//outputs a position texture
 
 		/*************************************************************/
 
@@ -1832,7 +1872,8 @@ FScreenPassTexture FVARIDSceneViewExtension::PostProcessPassAfterTonemap_RenderT
 			PassParameters->InGaussianSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::Create(GaussianTexture));
 			PassParameters->InLaplacianSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::Create(LaplacianTexture));
 			PassParameters->InContrastSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::Create(ContrastTexture));
-			PassParameters->InInpaintSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::Create(InpaintPositionTexture));
+			//PassParameters->InInpaintSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::Create(InpaintPositionTexture));
+			PassParameters->InInpaintSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::Create(InpaintColourTexture));
 
 			PassParameters->InBlurVFMapSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::Create(BlurVFMapTexture));
 			PassParameters->InContrastVFMapSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::Create(ContrastVFMapTexture));
