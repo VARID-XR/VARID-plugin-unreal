@@ -397,7 +397,11 @@ See: p.162 Computer Vision: Algorithms and Applications (March 27, 2021 draft) d
 
 
 NEW
-- Target: fill a reasonably sized scotoma within 20 shader passes at mip level 4
+- Target: fill a reasonably sized scotoma within 16 shader passes at mip level 3
+
+The community is encouraged to improve this FX. 
+Additional data is available in this FX pipeline which may help create a solution
+For example UV position data and a processing pass counter
 
 ### Blur
 - Gaussian Pyramid (bottom layer – highest resolution is unprocessed I.e. not gaussian low pass). This is purely for convenience. We don’t ever need to use a gaussian low pass texture in the highest resolution however we do often need the original unprocessed image available. ​

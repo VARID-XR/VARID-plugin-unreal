@@ -1,3 +1,4 @@
+// This source code is provided "as is" without warranty of any kind, either express or implied. Use at your own risk.
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -71,8 +72,6 @@ float3 Blur9(float3 a, float3 b, float3 c, float3 d, float3 e, float3 f, float3 
 {
 	return Weights9[0] * e + Weights9[1] * (d + f) + Weights9[2] * (c + g) + Weights9[3] * (b + h) + Weights9[4] * (a + i);
 }
-
-
 
 void Store2Pixels_Max256(uint CacheR[128], uint CacheG[128], uint CacheB[128], uint index, float3 pixel1, float3 pixel2)
 {

@@ -1,3 +1,4 @@
+// This source code is provided "as is" without warranty of any kind, either express or implied. Use at your own risk.
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -12,12 +13,12 @@ float2 InTexelSize;
 SamplerState InBilinearSampler;
 SamplerState InPointSampler;
 int SamplerMipLevel;
+Texture2D InMaskSRV;
 Texture2D InMaskedColourSRV;
 Texture2D InUnmaskedColourSRV;
-Texture2D InMaskSRV;
 Texture2D InMetaDataSRV;
-RWTexture2D<float2> OutPositionUAV;
 RWTexture2D<float4> OutColourUAV;
+RWTexture2D<float2> OutPositionUAV;
 
 [numthreads(8, 8, 1)]
 void MainCS
@@ -30,11 +31,9 @@ void MainCS
 
 	if (InMaskSRV[ID].r > MaskThreshold)
 	{
-		 float2 SourceUV = InMetaDataSRV.SampleLevel(InPointSampler, UV, SamplerMipLevel).xy;	// point sampler ensures we dont interpolate UVs - bad for an inpainter!!!
-		 OutPositionUAV[ID].xy = (SourceUV - UV) + SourceUV;		// manually interpolate - this will add the detailed UVs for mip level 0
-
-
-		 OutColourUAV[ID] = InMaskedColourSRV.SampleLevel(InBilinearSampler, UV, SamplerMipLevel).rgba;
+		float2 SourceUV = InMetaDataSRV.SampleLevel(InPointSampler, UV, SamplerMipLevel).xy;	// point sampler ensures we dont interpolate UVs - bad for an inpainter!!! Interpolated values could lie in inpainter mask...
+		OutPositionUAV[ID].xy = (SourceUV - UV) + SourceUV;		// manually interpolate - this will add the finer UV values from mip level 0 to the coarser UV values from mip level 3 (for example)
+		OutColourUAV[ID] = InMaskedColourSRV.SampleLevel(InBilinearSampler, UV, SamplerMipLevel).rgba;
 	}
 	else
 	{		

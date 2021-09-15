@@ -1,3 +1,4 @@
+// This source code is provided "as is" without warranty of any kind, either express or implied. Use at your own risk.
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -6,14 +7,14 @@
 
 #include "/Engine/Public/Platform.ush"
 
-Texture2D InGaussianSRV;
-Texture2D InLaplacianSRV;
-Texture2D InContrastSRV;
-Texture2D InInpaintSRV;
+Texture2D InGaussianSRV;        // not used. For debugging
+Texture2D InLaplacianSRV;       // not used. For debugging
+Texture2D InContrastSRV;        
+Texture2D InInpaintSRV;         // not used. For debugging
 
 Texture2D InBlurVFMapSRV;
-Texture2D InContrastVFMapSRV;   // not used
-Texture2D InInpaintVFMapSRV;    // not used
+Texture2D InContrastVFMapSRV;   // not used. For debugging
+Texture2D InInpaintVFMapSRV;    // not used. For debugging
 Texture2D InWarpVFMapSRV;
 
 SamplerState InBilinearSampler;
@@ -28,19 +29,13 @@ void MainPS
 	out float4 OutColour : SV_Target0
 )
 {
-    
-    OutColour = InInpaintSRV.SampleLevel(InBilinearSampler, UV, 0);
-    return;
-
-    // UV
-    float2 InpaintPositionUV = InInpaintSRV.SampleLevel(InPointSampler, UV, 0); // DO NOT use linear     
-    float2 WarpAmount = InWarpVFMapSRV.SampleLevel(InBilinearSampler, UV, 0);
-    float2 TransformedUV = InpaintPositionUV + WarpAmount;
+    // UV  
+    float2 WarpedUV = UV + InWarpVFMapSRV.SampleLevel(InBilinearSampler, UV, 0);
 
     // Mip level
     float BlurAmount = InBlurVFMapSRV.SampleLevel(InBilinearSampler, UV, 0);    //use normal UV - we dont want the blur FX to be warped
     float ScaledBlurAmount = clamp(BlurAmount * InMaxMipLevel, 0.0, InMaxMipLevel);    // scaled to fit the number of mip levels available
 	
-    float4 FinalColour = InContrastSRV.SampleLevel(InTrilinearSampler, TransformedUV, ScaledBlurAmount);
+    float4 FinalColour = InContrastSRV.SampleLevel(InTrilinearSampler, WarpedUV, ScaledBlurAmount);
     OutColour = FinalColour;
 }

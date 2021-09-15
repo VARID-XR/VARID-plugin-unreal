@@ -1,3 +1,4 @@
+// This source code is provided "as is" without warranty of any kind, either express or implied. Use at your own risk.
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -351,11 +352,11 @@ public:
 		SHADER_PARAMETER(FIntPoint, InDispatchThreadIDOffset)
 		SHADER_PARAMETER(FVector2D, InTexelSize)
 		SHADER_PARAMETER(int32, PassCounter)
-		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InColourSRV)
 		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InMaskSRV)
+		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InColourSRV)
 		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InMetaDataSRV)
-		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutMetaDataUAV)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutColourUAV)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutMetaDataUAV)
 		END_SHADER_PARAMETER_STRUCT();
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
@@ -383,12 +384,12 @@ public:
 		SHADER_PARAMETER_SAMPLER(SamplerState, InBilinearSampler)
 		SHADER_PARAMETER_SAMPLER(SamplerState, InPointSampler)
 		SHADER_PARAMETER(int, SamplerMipLevel)
+		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InMaskSRV)
 		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InMaskedColourSRV)
 		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InUnmaskedColourSRV)
-		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InMaskSRV)
 		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InMetaDataSRV)
-		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutPositionUAV)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutColourUAV)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutPositionUAV)
 		END_SHADER_PARAMETER_STRUCT();
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
@@ -543,102 +544,6 @@ public:
 };
 IMPLEMENT_GLOBAL_SHADER(FVARIDDirectCopyMaskedCS, "/Plugin/VARID/Private/VARIDDirectCopyMaskedCS.usf", "MainCS", SF_Compute);
 
-
-
-
-
-// PIXMIX inspired shaders - not currently used
-
-class FVARIDInpainterPropagateCS : public FGlobalShader
-{
-public:
-	DECLARE_GLOBAL_SHADER(FVARIDInpainterPropagateCS)
-	SHADER_USE_PARAMETER_STRUCT(FVARIDInpainterPropagateCS, FGlobalShader)
-
-		BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER(FIntPoint, InDispatchThreadIDOffset)
-		SHADER_PARAMETER(FVector2D, InTexelSize)
-		SHADER_PARAMETER_SAMPLER(SamplerState, InBilinearSampler)
-		SHADER_PARAMETER_SAMPLER(SamplerState, InPointSampler)
-		SHADER_PARAMETER(FIntPoint, InTextureSize)
-		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D<float4>, InColourSRV)
-		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D<float>, InMaskSRV)
-		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D<float2>, InPositionCostSRV)
-		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float2>, OutPositionUAV)
-
-		END_SHADER_PARAMETER_STRUCT();
-
-	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
-	{
-		return RHISupportsComputeShaders(Parameters.Platform);
-	}
-
-	static void ModifyCompilationEnvironment(const FShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
-	{
-		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
-	}
-};
-IMPLEMENT_GLOBAL_SHADER(FVARIDInpainterPropagateCS, "/Plugin/VARID/Private/VARIDInpainterPropagateCS.usf", "MainCS", SF_Compute)
-
-
-class FVARIDInpainterRandomPositionCS : public FGlobalShader
-{
-public:
-	DECLARE_GLOBAL_SHADER(FVARIDInpainterRandomPositionCS)
-	SHADER_USE_PARAMETER_STRUCT(FVARIDInpainterRandomPositionCS, FGlobalShader)
-
-		BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER(FIntPoint, InDispatchThreadIDOffset)
-		SHADER_PARAMETER(FVector2D, InTexelSize)
-		SHADER_PARAMETER_SAMPLER(SamplerState, InBilinearSampler)
-		SHADER_PARAMETER_SAMPLER(SamplerState, InPointSampler)
-		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D<float>, InMaskSRV)
-		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float2>, OutPositionUAV)
-		END_SHADER_PARAMETER_STRUCT();
-
-	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
-	{
-		return RHISupportsComputeShaders(Parameters.Platform);
-	}
-
-	static void ModifyCompilationEnvironment(const FShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
-	{
-		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
-	}
-};
-IMPLEMENT_GLOBAL_SHADER(FVARIDInpainterRandomPositionCS, "/Plugin/VARID/Private/VARIDInpainterRandomPositionCS.usf", "MainCS", SF_Compute)
-
-
-class FVARIDInpainterCostCS : public FGlobalShader
-{
-public:
-	DECLARE_GLOBAL_SHADER(FVARIDInpainterCostCS)
-	SHADER_USE_PARAMETER_STRUCT(FVARIDInpainterCostCS, FGlobalShader)
-
-		BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-		SHADER_PARAMETER(FIntPoint, InDispatchThreadIDOffset)
-		SHADER_PARAMETER(FVector2D, InTexelSize)
-		SHADER_PARAMETER_SAMPLER(SamplerState, InBilinearSampler)
-		SHADER_PARAMETER_SAMPLER(SamplerState, InPointSampler)
-		SHADER_PARAMETER(FIntPoint, InTextureSize)
-		SHADER_PARAMETER(float, InFloatMax)
-		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D<float4>, InColourSRV)
-		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D<float>, InMaskSRV)
-		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D<float2>, InPositionSRV)
-		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutPositionCostUAV)
-		END_SHADER_PARAMETER_STRUCT();
-
-	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
-	{
-		return RHISupportsComputeShaders(Parameters.Platform);
-	}
-
-	static void ModifyCompilationEnvironment(const FShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
-	{
-		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
-	}
-};
-IMPLEMENT_GLOBAL_SHADER(FVARIDInpainterCostCS, "/Plugin/VARID/Private/VARIDInpainterCostCS.usf", "MainCS", SF_Compute)
 
 /*****************************************************************************************************************/
 // VF map
@@ -1276,185 +1181,12 @@ static void BuildContrastTexture_RenderThread(FRDGBuilder& InGraphBuilder, FRDGT
 	}
 }
 
-static bool BuildInpaintTexturePIXMIX_RenderThread(FRDGBuilder& InGraphBuilder, FRDGTextureRef InColourTexture, FRDGTextureRef InVFMapTexture, FRDGTextureRef OutPositionMipTexture, const FIntRect& InViewportRect)
-{
-	check(InColourTexture);
-	check(InVFMapTexture);
-	check(OutPositionMipTexture);
-
-	// VF map when passed in only has mip level: zero - but it can take more levels. Populate them here. 
-	// We use a point sampler as we dont want any interpolation of the mask values. should be either black (0) or white (1)
-	// TODO remove? ahhh but then wouldnt be able to do pixel id addressing - would have to use sampleLevel()
-	// TODO only generate levels we actually use - so not down to 1x1...
-	if (!BuildPyramid_RenderThread(InGraphBuilder, InVFMapTexture, TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI(), InViewportRect))
-	{
-		return false;
-	}
-
-	const FRDGTextureDesc& OutTextureDesc = OutPositionMipTexture->Desc;
-	const int32 OriginalTextureWidth = OutTextureDesc.Extent.X;
-	const int32 OriginalTextureHeight = OutTextureDesc.Extent.Y;
-	const int32 OriginalTextureOriginOffset = InViewportRect.Min.X > 0 ? OriginalTextureWidth / 2 : 0;
-	const int32 MaxNumberOfCostReducingIterations = 1;
-	const int32 NumberOfMips = 6;// OutTextureDesc.NumMips;
-	const int32 MaxMipLevelIndex = NumberOfMips - 1;	// offset for zero based index
-
-	FRDGTextureDesc PositionCostMipTextureDesc = FRDGTextureDesc::Create2D
-	(
-		OutTextureDesc.Extent,
-		EPixelFormat::PF_A32B32G32R32F,
-		FClearValueBinding::Black,
-		TexCreate_ShaderResource | TexCreate_UAV,
-		NumberOfMips,
-		1
-	);
-
-	FRDGTextureRef PositionCostMipTexture = InGraphBuilder.CreateTexture(PositionCostMipTextureDesc, TEXT("PositionCostMipTexture"));
-
-	// all shaders
-	TShaderMapRef<FVARIDInpainterRandomPositionCS> RandomPositionMapShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-	TShaderMapRef<FVARIDInpainterCostCS> CostShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-	TShaderMapRef<FVARIDInpainterPropagateCS> PropagateShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-	TShaderMapRef<FVARIDBasicResampleCS> ResampleComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-
-	// at the coarsest mip level, init masked area with random positions and unmasked areas with linear UV values
-	{
-		const FIntPoint InitTextureSize(FMath::Max(OriginalTextureWidth >> MaxMipLevelIndex, 1), FMath::Max(OriginalTextureHeight >> MaxMipLevelIndex, 1));
-		const FVector2D InitTexelSize(1.0f / InitTextureSize.X, 1.0f / InitTextureSize.Y);
-		const FIntPoint InitDispatchSize(FMath::Max(OriginalTextureWidth >> MaxMipLevelIndex, 1), FMath::Max(OriginalTextureHeight >> MaxMipLevelIndex, 1));
-		const FIntPoint InitDispatchThreadIDOffset(OriginalTextureOriginOffset >> MaxMipLevelIndex, 0);
-
-		{
-			FVARIDInpainterRandomPositionCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDInpainterRandomPositionCS::FParameters>();
-			PassParameters->InDispatchThreadIDOffset = InitDispatchThreadIDOffset;
-			PassParameters->InTexelSize = InitTexelSize;
-			PassParameters->InBilinearSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-			PassParameters->InPointSampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-			PassParameters->InMaskSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, MaxMipLevelIndex));
-			PassParameters->OutPositionUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutPositionMipTexture, MaxMipLevelIndex));
-			FComputeShaderUtils::AddPass(
-				InGraphBuilder,
-				RDG_EVENT_NAME("VARID - Inpainter - Generate Random Positions - MipLevel=%d", MaxMipLevelIndex),
-				RandomPositionMapShader,
-				PassParameters,
-				FComputeShaderUtils::GetGroupCount(InitDispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
-		}
-	}
-
-	// work from the highest mip level (lowest resolution) to the lowest mip level (highest resolution)
-	for (int32 MipLevel = MaxMipLevelIndex; MipLevel >= 0; --MipLevel) // dont use unsigned int here - otherwise numbers will overflow to a large positive number if it tries to subtract from zero...
-	{
-		const FIntPoint TextureSize(FMath::Max(OriginalTextureWidth >> MipLevel, 1), FMath::Max(OriginalTextureHeight >> MipLevel, 1));
-		const FVector2D TexelSize(1.0f / TextureSize.X, 1.0f / TextureSize.Y);
-		const FIntPoint DispatchSize(FMath::Max(OriginalTextureWidth >> MipLevel, 1), FMath::Max(OriginalTextureHeight >> MipLevel, 1));
-		const FIntPoint DispatchThreadIDOffset(OriginalTextureOriginOffset >> MipLevel, 0);
-
-		// refine 
-		for (int32 CostReducingIteration = 0; CostReducingIteration < MaxNumberOfCostReducingIterations; ++CostReducingIteration)
-		{
-			// NOTE: during first iteration the masked area of the position map will have completely random values and no cost data 
-
-			// steps:
-			// 1. calculate current cost - first iteration this will be comparing the initial random values 
-			//		inputs: position, cost
-			//		outputs: position + cost
-			// 2. propagate neighbour mappings with lowest costs
-			//		each pixel compares itself with its neighbours w.r.t. cost and copies mapping with the lowest cost (which could already be itself therefore no change)
-			//		inputs: cost
-			//		outputs: position
-
-			{
-				FVARIDInpainterCostCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDInpainterCostCS::FParameters>();
-				PassParameters->InDispatchThreadIDOffset = DispatchThreadIDOffset;
-				PassParameters->InTexelSize = TexelSize;
-				PassParameters->InBilinearSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-				PassParameters->InPointSampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-				PassParameters->InTextureSize = TextureSize;
-				PassParameters->InFloatMax = FLT_MAX;
-				PassParameters->InColourSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InColourTexture, MipLevel));	// colour used for appearance cost calculation. 
-				PassParameters->InMaskSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, MipLevel));
-				PassParameters->InPositionSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutPositionMipTexture, MipLevel));
-				PassParameters->OutPositionCostUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(PositionCostMipTexture, MipLevel));
-
-				FComputeShaderUtils::AddPass(
-					InGraphBuilder,
-					RDG_EVENT_NAME("VARID - Inpainter - Calc Position Cost - MipLevel=%d - CostReducingIteration=%d", MipLevel, CostReducingIteration),
-					CostShader,
-					PassParameters,
-					FComputeShaderUtils::GetGroupCount(DispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
-			}
-
-			{
-				FVARIDInpainterPropagateCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDInpainterPropagateCS::FParameters>();
-				PassParameters->InDispatchThreadIDOffset = DispatchThreadIDOffset;
-				PassParameters->InTexelSize = TexelSize;
-				PassParameters->InBilinearSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-				PassParameters->InPointSampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-				PassParameters->InTextureSize = TextureSize;
-				PassParameters->InColourSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InColourTexture, MipLevel));	// colour used for appearance cost calculation. 
-				PassParameters->InMaskSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, MipLevel));
-				PassParameters->InPositionCostSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(PositionCostMipTexture, MipLevel));
-				PassParameters->OutPositionUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutPositionMipTexture, MipLevel));
-				
-				FComputeShaderUtils::AddPass(
-					InGraphBuilder,
-					RDG_EVENT_NAME("VARID - Inpainter - Propagate Low cost Positions - MipLevel=%d - CostReducingIteration=%d", MipLevel, CostReducingIteration),
-					PropagateShader,
-					PassParameters,
-					FComputeShaderUtils::GetGroupCount(DispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
-			}
-		}
-
-		// upsample
-		if (MipLevel > 0)
-		{
-			int32 LoResMipLevel = MipLevel;
-			int32 HiResMipLevel = MipLevel - 1;
-
-			const FIntPoint UpsampledTextureSize(FMath::Max(OriginalTextureWidth >> HiResMipLevel, 1), FMath::Max(OriginalTextureHeight >> HiResMipLevel, 1));
-			const FVector2D UpsampledTexelSize(1.0f / UpsampledTextureSize.X, 1.0f / UpsampledTextureSize.Y);
-			const FIntPoint UpsampledDispatchSize(FMath::Max(OriginalTextureWidth >> HiResMipLevel, 1), FMath::Max(OriginalTextureHeight >> HiResMipLevel, 1));
-			const FIntPoint UpsampledDispatchThreadIDOffset(OriginalTextureOriginOffset >> HiResMipLevel, 0);
-
-			{
-				FVARIDBasicResampleCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
-				PassParameters->InDispatchThreadIDOffset = UpsampledDispatchThreadIDOffset;
-				PassParameters->InTexelSize = UpsampledTexelSize;
-				PassParameters->InSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-				PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutPositionMipTexture, LoResMipLevel));
-				PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutPositionMipTexture, HiResMipLevel));
-
-				FComputeShaderUtils::AddPass(
-					InGraphBuilder,
-					RDG_EVENT_NAME("VARID - Inpainter - Position Upsample - MipLevel=%d", MipLevel),
-					ResampleComputeShader,
-					PassParameters,
-					FComputeShaderUtils::GetGroupCount(UpsampledDispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
-			}
-		}
-	}
-
-	return true;
-}
-
 static bool BuildInpaintTexture_RenderThread(FRDGBuilder& InGraphBuilder, FRDGTextureRef InColourTexture, FRDGTextureRef InVFMapTexture, FRDGTextureRef OutPositionMipTexture, FRDGTextureRef OutColourTexture, const FIntRect& InViewportRect)
 {
 	check(InColourTexture);
 	check(InVFMapTexture);
-	check(OutPositionMipTexture);
-
-	// VF map when passed in only has mip level: zero - but it can take more levels. Populate them here. 
-	// We use a point sampler as we dont want any interpolation of the mask values. should be either black (0) or white (1)
-	// TODO remove? ahhh but then wouldnt be able to do pixel id addressing - would have to use sampleLevel()
-	// TODO only generate level we actually use - so not down to 1x1... just use a resample shader - not a pyramid shader
-	// IS it better to downsample once at beginnning for entire image or use sampleLevel for every pixel
-	if (!BuildPyramid_RenderThread(InGraphBuilder, InVFMapTexture, TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI(), InViewportRect))
-	{
-		return false;
-	}
 
 	const FRDGTextureDesc& OutColourTextureDesc = OutColourTexture->Desc;
-	const FRDGTextureDesc& OutPositionMipTextureDesc = OutPositionMipTexture->Desc;
 	const int32 OriginalTextureWidth = OutColourTextureDesc.Extent.X;
 	const int32 OriginalTextureHeight = OutColourTextureDesc.Extent.Y;
 	const int32 OriginalTextureOriginOffset = InViewportRect.Min.X > 0 ? OriginalTextureWidth / 2 : 0;
@@ -1462,78 +1194,100 @@ static bool BuildInpaintTexture_RenderThread(FRDGBuilder& InGraphBuilder, FRDGTe
 	const FIntPoint OriginalDispatchSize(OriginalTextureWidth, OriginalTextureHeight);
 	const FIntPoint OriginalDispatchThreadIDOffset(OriginalTextureOriginOffset, 0);
 
-	const int32 NumberOfPasses = 16;
+	const int32 NumberOfPasses = 16;	// must be an even number
 	const int32 PassMipLevel = 3;
 	const int32 NumMips = PassMipLevel + 1;
 
 	FRDGTextureDesc MetaDataTextureDesc = FRDGTextureDesc::Create2D
 	(
-		OutPositionMipTextureDesc.Extent,
+		OutColourTextureDesc.Extent,
 		EPixelFormat::PF_A32B32G32R32F,
 		FClearValueBinding::Black,
 		TexCreate_ShaderResource | TexCreate_UAV,
-		NumMips, // careful..
+		NumMips,
 		1
 	);
 
-	// ensure we have a descriptor that can support mipmaps
+	// ensure we have a descriptor that can support mipmaps (the original texture passed in might not support mips)
 	FRDGTextureDesc ColourTextureDesc = FRDGTextureDesc::Create2D
 	(
 		OutColourTextureDesc.Extent,
 		OutColourTextureDesc.Format,
 		FClearValueBinding::Black,
 		TexCreate_ShaderResource | TexCreate_UAV,
-		NumMips,	// careful..
+		NumMips,	
 		1
 	);
 
+	// temporary textures used for processing the 'fill' shader
+	// the textures only have data at a single lower resolution mip level - for better performance
+	// the final result is copied back into the hi res output texture during the finalise shader stage
 	FRDGTextureRef MetaDataTexture_1 = InGraphBuilder.CreateTexture(MetaDataTextureDesc, TEXT("MetaDataTexture_1"));
 	FRDGTextureRef MetaDataTexture_2 = InGraphBuilder.CreateTexture(MetaDataTextureDesc, TEXT("MetaDataTexture_2"));
 	FRDGTextureRef ColourTexture_1 = InGraphBuilder.CreateTexture(ColourTextureDesc, TEXT("ColourTexture_1"));
 	FRDGTextureRef ColourTexture_2 = InGraphBuilder.CreateTexture(ColourTextureDesc, TEXT("ColourTexture_2"));
 
-	TShaderMapRef<FVARIDBasicResampleCS> ResampleComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	TShaderMapRef<FVARIDInpainterInitialiseCS> InpainterInitialiseShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-	TShaderMapRef<FVARIDInpainterFillCS> InpainterShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+	TShaderMapRef<FVARIDBasicResampleCS> ResampleComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
+	TShaderMapRef<FVARIDInpainterFillCS> InpainterFillShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 	TShaderMapRef<FVARIDInpainterFinaliseCS> InpainterFinaliseShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
-	TShaderMapRef<FVARIDDirectCopyMaskedCS> DirectCopyMaskedComputeShader(GetGlobalShaderMap(GMaxRHIFeatureLevel));
 
-	const FIntPoint TextureSize(FMath::Max(OriginalTextureWidth >> PassMipLevel, 1), FMath::Max(OriginalTextureHeight >> PassMipLevel, 1));
-	const FVector2D TexelSize(1.0f / TextureSize.X, 1.0f / TextureSize.Y);
-	const FIntPoint DispatchSize(FMath::Max(OriginalTextureWidth >> PassMipLevel, 1), FMath::Max(OriginalTextureHeight >> PassMipLevel, 1));
-	const FIntPoint DispatchThreadIDOffset(OriginalTextureOriginOffset >> PassMipLevel, 0);
+	const FIntPoint PassTextureSize(FMath::Max(OriginalTextureWidth >> PassMipLevel, 1), FMath::Max(OriginalTextureHeight >> PassMipLevel, 1));
+	const FVector2D PassTexelSize(1.0f / PassTextureSize.X, 1.0f / PassTextureSize.Y);
+	const FIntPoint PassDispatchSize(FMath::Max(OriginalTextureWidth >> PassMipLevel, 1), FMath::Max(OriginalTextureHeight >> PassMipLevel, 1));
+	const FIntPoint PassDispatchThreadIDOffset(OriginalTextureOriginOffset >> PassMipLevel, 0);
 
-	// initialise
+	// initialise low res pass mip texture with initial colour - essentially downsample the colour
 	{
-		FVARIDInpainterInitialiseCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDInpainterInitialiseCS::FParameters>();
-		PassParameters->InDispatchThreadIDOffset = DispatchThreadIDOffset;
-		PassParameters->InTexelSize = TexelSize;
-		PassParameters->InMaskSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, PassMipLevel));
-		PassParameters->OutMetaDataUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(MetaDataTexture_1, PassMipLevel));
-		
-		FComputeShaderUtils::AddPass(
-			InGraphBuilder,
-			RDG_EVENT_NAME("VARID - Inpainter - Initialise - MipLevel=%d", PassMipLevel),
-			InpainterInitialiseShader,
-			PassParameters,
-			FComputeShaderUtils::GetGroupCount(DispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
-	}
+		// meta data: fill mask, pass counter, UV
+		{
+			FVARIDInpainterInitialiseCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDInpainterInitialiseCS::FParameters>();
+			PassParameters->InDispatchThreadIDOffset = PassDispatchThreadIDOffset;
+			PassParameters->InTexelSize = PassTexelSize;
+			PassParameters->InMaskSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, PassMipLevel));
+			PassParameters->OutMetaDataUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(MetaDataTexture_1, PassMipLevel));
 
-	// downsample colour
-	{
-		FVARIDBasicResampleCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
-		PassParameters->InDispatchThreadIDOffset = DispatchThreadIDOffset;
-		PassParameters->InTexelSize = TexelSize;
-		PassParameters->InSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-		PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InColourTexture, 0));
-		PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(ColourTexture_1, PassMipLevel));
+			FComputeShaderUtils::AddPass(
+				InGraphBuilder,
+				RDG_EVENT_NAME("VARID - Inpainter - Initialise - MipLevel=%d", PassMipLevel),
+				InpainterInitialiseShader,
+				PassParameters,
+				FComputeShaderUtils::GetGroupCount(PassDispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
+		}
 
-		FComputeShaderUtils::AddPass(
-			InGraphBuilder,
-			RDG_EVENT_NAME("VARID - Inpainter - Downsample Colour - MipLevel=%d", PassMipLevel),
-			ResampleComputeShader,
-			PassParameters,
-			FComputeShaderUtils::GetGroupCount(DispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
+		// colour
+		{
+			FVARIDBasicResampleCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
+			PassParameters->InDispatchThreadIDOffset = PassDispatchThreadIDOffset;
+			PassParameters->InTexelSize = PassTexelSize;
+			PassParameters->InSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
+			PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InColourTexture, 0));
+			PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(ColourTexture_1, PassMipLevel));
+
+			FComputeShaderUtils::AddPass(
+				InGraphBuilder,
+				RDG_EVENT_NAME("VARID - Inpainter - Downsample Colour - MipLevel=%d", PassMipLevel),
+				ResampleComputeShader,
+				PassParameters,
+				FComputeShaderUtils::GetGroupCount(PassDispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
+		}
+
+		// VF Map
+		{
+			FVARIDBasicResampleCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDBasicResampleCS::FParameters>();
+			PassParameters->InDispatchThreadIDOffset = PassDispatchThreadIDOffset;
+			PassParameters->InTexelSize = PassTexelSize;
+			PassParameters->InSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
+			PassParameters->InSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, 0));
+			PassParameters->OutUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(InVFMapTexture, PassMipLevel));
+
+			FComputeShaderUtils::AddPass(
+				InGraphBuilder,
+				RDG_EVENT_NAME("VARID - Inpainter - Downsample VF Map - MipLevel=%d", PassMipLevel),
+				ResampleComputeShader,
+				PassParameters,
+				FComputeShaderUtils::GetGroupCount(PassDispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
+		}
 	}
 
 	// pointers to textures
@@ -1542,7 +1296,7 @@ static bool BuildInpaintTexture_RenderThread(FRDGBuilder& InGraphBuilder, FRDGTe
 	FRDGTextureRef InColour;
 	FRDGTextureRef OutColour;
 
-	// refine 
+	// multiple refinement passes
 	for (int32 PassCounter = 0; PassCounter < NumberOfPasses; ++PassCounter)
 	{
 		// flipping totally works!
@@ -1563,25 +1317,25 @@ static bool BuildInpaintTexture_RenderThread(FRDGBuilder& InGraphBuilder, FRDGTe
 
 		{
 			FVARIDInpainterFillCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDInpainterFillCS::FParameters>();
-			PassParameters->InDispatchThreadIDOffset = DispatchThreadIDOffset;
-			PassParameters->InTexelSize = TexelSize;
+			PassParameters->InDispatchThreadIDOffset = PassDispatchThreadIDOffset;
+			PassParameters->InTexelSize = PassTexelSize;
 			PassParameters->PassCounter = PassCounter;
-			PassParameters->InColourSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InColour, PassMipLevel));
 			PassParameters->InMaskSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InVFMapTexture, PassMipLevel));
+			PassParameters->InColourSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InColour, PassMipLevel));			
 			PassParameters->InMetaDataSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InMetaData, PassMipLevel));
-			PassParameters->OutMetaDataUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutMetaData, PassMipLevel));
 			PassParameters->OutColourUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutColour, PassMipLevel));
+			PassParameters->OutMetaDataUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutMetaData, PassMipLevel));
 
 			FComputeShaderUtils::AddPass(
 				InGraphBuilder,
 				RDG_EVENT_NAME("VARID - Inpainter - MipLevel=%d - PassCounter=%d", PassMipLevel, PassCounter),
-				InpainterShader,
+				InpainterFillShader,
 				PassParameters,
-				FComputeShaderUtils::GetGroupCount(DispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
+				FComputeShaderUtils::GetGroupCount(PassDispatchSize, FComputeShaderUtils::kGolden2DGroupSize));
 		}
 	}
 
-	// finalise
+	// finalise - copy low res filled area into hi res out image. 
 	{
 		FVARIDInpainterFinaliseCS::FParameters* PassParameters = InGraphBuilder.AllocParameters<FVARIDInpainterFinaliseCS::FParameters>();
 		PassParameters->InDispatchThreadIDOffset = OriginalDispatchThreadIDOffset;
@@ -1593,8 +1347,8 @@ static bool BuildInpaintTexture_RenderThread(FRDGBuilder& InGraphBuilder, FRDGTe
 		PassParameters->InMaskedColourSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutColour, PassMipLevel));
 		PassParameters->InUnmaskedColourSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(InColourTexture, 0));
 		PassParameters->InMetaDataSRV = InGraphBuilder.CreateSRV(FRDGTextureSRVDesc::CreateForMipLevel(OutMetaData, PassMipLevel));
-		PassParameters->OutPositionUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutPositionMipTexture, 0));
 		PassParameters->OutColourUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutColourTexture, 0));
+		PassParameters->OutPositionUAV = InGraphBuilder.CreateUAV(FRDGTextureUAVDesc(OutPositionMipTexture, 0));
 
 		FComputeShaderUtils::AddPass(
 			InGraphBuilder,
@@ -1606,7 +1360,6 @@ static bool BuildInpaintTexture_RenderThread(FRDGBuilder& InGraphBuilder, FRDGTe
 
 	return true;
 }
-
 
 /*****************************************************************************************************************/
 // helpers
@@ -1751,26 +1504,29 @@ FScreenPassTexture FVARIDSceneViewExtension::PostProcessPassAfterTonemap_RenderT
 
 		/*************************************************************/
 
+		// useful for simple height maps
 		FRDGTextureDesc R32_FLOAT_TextureDesc = FRDGTextureDesc::Create2D
 		(
 			TextureSize,
-			EPixelFormat::PF_R32_FLOAT,		// TODO recuce to 16?
+			EPixelFormat::PF_R32_FLOAT,		// TODO recuce to 16 for performance?
 			FClearValueBinding::Black,
-			TexCreate_ShaderResource | TexCreate_UAV,	// TODO revise
+			TexCreate_ShaderResource | TexCreate_UAV,	
 			NumberOfMipsToGenerate,
 			1
 		);
 
+		// useful for UV position/normal maps
 		FRDGTextureDesc G32R32F_TextureDesc = FRDGTextureDesc::Create2D
 		(
 			TextureSize,
-			EPixelFormat::PF_G32R32F,		// TODO reduce to 16?
+			EPixelFormat::PF_G32R32F,		// TODO reduce to 16 for performance?
 			FClearValueBinding::Black,
 			TexCreate_ShaderResource | TexCreate_UAV,
 			NumberOfMipsToGenerate,
 			1
 		);
 
+		// useful for high precision 4 channel textures
 		FRDGTextureDesc A32B32G32R32F_TextureDesc = FRDGTextureDesc::Create2D
 		(
 			TextureSize,
@@ -1781,12 +1537,13 @@ FScreenPassTexture FVARIDSceneViewExtension::PostProcessPassAfterTonemap_RenderT
 			1
 		);
 
+		// useful for most colour processing
 		FRDGTextureDesc R16G16B16A16_UNORM_TextureDesc = FRDGTextureDesc::Create2D
 		(
 			TextureSize,
 			EPixelFormat::PF_R16G16B16A16_UNORM,	// original is 8 bits per channel... we give it double precision to work with compared to input and output format
-			FClearValueBinding::Green,
-			TexCreate_ShaderResource | TexCreate_UAV,	// TODO revise
+			FClearValueBinding::Black,
+			TexCreate_ShaderResource | TexCreate_UAV,
 			NumberOfMipsToGenerate,
 			1
 		);
@@ -1843,19 +1600,19 @@ FScreenPassTexture FVARIDSceneViewExtension::PostProcessPassAfterTonemap_RenderT
 		/*************************************************************/
 		// build FX
 
+		// inpainter comes first as it only applies to mip level 0. Other FX will take the inpainter result and create inpainted pyramids
+		FRDGTextureRef InpaintPositionTexture = GraphBuilder.CreateTexture(G32R32F_TextureDesc, TEXT("InpaintPositionTexture"));	// not currently used. Included for a future improved inpainter FX...
+		FRDGTextureRef InpaintColourTexture = GraphBuilder.CreateTexture(R16G16B16A16_UNORM_TextureDesc, TEXT("InpaintColourTexture"));
+		BuildInpaintTexture_RenderThread(GraphBuilder, SceneColor.Texture, InpaintVFMapTexture, InpaintPositionTexture, InpaintColourTexture, ViewportRect);
 
 		FRDGTextureRef GaussianTexture = GraphBuilder.CreateTexture(R16G16B16A16_UNORM_TextureDesc, TEXT("GaussianTexture"));
-		BuildGaussianPyramid_RenderThread(GraphBuilder, SceneColor.Texture, GaussianTexture, ViewportRect);
+		BuildGaussianPyramid_RenderThread(GraphBuilder, InpaintColourTexture, GaussianTexture, ViewportRect);
 
 		FRDGTextureRef LaplacianTexture = GraphBuilder.CreateTexture(R16G16B16A16_UNORM_TextureDesc, TEXT("LaplacianTexture"));
 		BuildLaplacianPyramid_RenderThread(GraphBuilder, GaussianTexture, LaplacianTexture, ViewportRect);
 
 		FRDGTextureRef ContrastTexture = GraphBuilder.CreateTexture(R16G16B16A16_UNORM_TextureDesc, TEXT("ContrastTexture"));
 		BuildContrastTexture_RenderThread(GraphBuilder, LaplacianTexture, ContrastVFMapTexture, ContrastTexture, ViewportRect);
-
-		FRDGTextureRef InpaintPositionTexture = GraphBuilder.CreateTexture(G32R32F_TextureDesc, TEXT("InpaintPositionTexture"));
-		FRDGTextureRef InpaintColourTexture = GraphBuilder.CreateTexture(R16G16B16A16_UNORM_TextureDesc, TEXT("InpaintColourTexture"));
-		BuildInpaintTexture_RenderThread(GraphBuilder, ContrastTexture, InpaintVFMapTexture, InpaintPositionTexture, InpaintColourTexture, ViewportRect);	//outputs a position texture
 
 		/*************************************************************/
 
@@ -1872,7 +1629,6 @@ FScreenPassTexture FVARIDSceneViewExtension::PostProcessPassAfterTonemap_RenderT
 			PassParameters->InGaussianSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::Create(GaussianTexture));
 			PassParameters->InLaplacianSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::Create(LaplacianTexture));
 			PassParameters->InContrastSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::Create(ContrastTexture));
-			//PassParameters->InInpaintSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::Create(InpaintPositionTexture));
 			PassParameters->InInpaintSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::Create(InpaintColourTexture));
 
 			PassParameters->InBlurVFMapSRV = GraphBuilder.CreateSRV(FRDGTextureSRVDesc::Create(BlurVFMapTexture));

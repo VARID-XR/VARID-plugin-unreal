@@ -1,3 +1,4 @@
+// This source code is provided "as is" without warranty of any kind, either express or implied. Use at your own risk.
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
@@ -10,11 +11,11 @@
 uint2 InDispatchThreadIDOffset;
 float2 InTexelSize;
 int PassCounter;
-Texture2D InColourSRV;
 Texture2D InMaskSRV;
+Texture2D InColourSRV;
 Texture2D InMetaDataSRV; 
-RWTexture2D<float4> OutMetaDataUAV;	//rgba = UV.x, UV.y, PassCounter, Fill(0 or 1)
 RWTexture2D<float4> OutColourUAV;
+RWTexture2D<float4> OutMetaDataUAV;	//rgba = UV.x, UV.y, PassCounter, Fill Status: 0=Filled or 1=Fill Me!
 
 [numthreads(8, 8, 1)]
 void MainCS
@@ -23,183 +24,76 @@ void MainCS
 )
 {
 	uint2 ID = InDispatchThreadIDOffset + DispatchThreadID.xy;
-	PassCounter++;
+	PassCounter++;	// ensure not zero based
 
-	float4 BestValue = InMetaDataSRV[ID];	//default is passthrough whether it be mask, edge or not
+	float4 MetaData = InMetaDataSRV[ID];    //default is passthrough whether it be in mask, on the mask edge or neither
 	float4 Colour = InColourSRV[ID];
-
-	 // TODO try intensity diff intead of colour
-	// LAB colour doesnt seem to improve things
-	// TODO add weightings - to control how data is propagated
 
 	if (InMaskSRV[ID].r > MaskThreshold)
 	{
-		if (InMetaDataSRV[ID].a == 1.0)
+		if (InMetaDataSRV[ID].a == 1.0)	// 1 == not yet filled
 		{
-			// colour
+			float4 AccumulatedColour = float4(0, 0, 0, 1);
+			int NumColours = 0;
+
+			// in a clockwise order around the compass, check all neighbouring pixels
+
+			if (InMetaDataSRV[ID + TopOffset].a == 0.0)
 			{
-				float4 AccumulatedColour = float4(0, 0, 0, 1);
-				int NumColours = 0;
-
-				// in a clockwise order around the compass
-
-				if (InMetaDataSRV[ID + TopOffset].a == 0.0)
-				{
-					AccumulatedColour += InColourSRV[ID + TopOffset].rgba;
-					NumColours++;
-				}
-
-				if (InMetaDataSRV[ID + TopRightOffset].a == 0.0)
-				{
-					AccumulatedColour += InColourSRV[ID + TopRightOffset].rgba;
-					NumColours++;
-				}
-
-				if (InMetaDataSRV[ID + RightOffset].a == 0.0)
-				{
-					AccumulatedColour += InColourSRV[ID + RightOffset].rgba;
-					NumColours++;
-				}
-
-				if (InMetaDataSRV[ID + BottomRightOffset].a == 0.0)
-				{
-					AccumulatedColour += InColourSRV[ID + BottomRightOffset].rgba;
-					NumColours++;
-				}
-
-				if (InMetaDataSRV[ID + BottomOffset].a == 0.0)
-				{
-					AccumulatedColour += InColourSRV[ID + BottomOffset].rgba;
-					NumColours++;
-				}
-
-				if (InMetaDataSRV[ID + BottomLeftOffset].a == 0.0)
-				{
-					AccumulatedColour += InColourSRV[ID + BottomLeftOffset].rgba;
-					NumColours++;
-				}
-
-				if (InMetaDataSRV[ID + LeftOffset].a == 0.0)
-				{
-					AccumulatedColour += InColourSRV[ID + LeftOffset].rgba;
-					NumColours++;
-				}
-
-				if (InMetaDataSRV[ID + TopLeftOffset].a == 0.0)
-				{
-					AccumulatedColour += InColourSRV[ID + TopLeftOffset].rgba;
-					NumColours++;
-				}
-
-				if (NumColours > 0)
-				{
-					Colour = AccumulatedColour / NumColours;					
-				}
+				AccumulatedColour += InColourSRV[ID + TopOffset].rgba;
+				NumColours++;
 			}
 
-			// position
+			if (InMetaDataSRV[ID + TopRightOffset].a == 0.0)
 			{
-				float LowestDiff = 0.1;
+				AccumulatedColour += InColourSRV[ID + TopRightOffset].rgba;
+				NumColours++;
+			}
 
-				if (InMetaDataSRV[ID + TopOffset].a == 0.0)
-				{
-					float3 TopColour = InColourSRV[InMetaDataSRV[ID + TopOffset].xy].rgb;
+			if (InMetaDataSRV[ID + RightOffset].a == 0.0)
+			{
+				AccumulatedColour += InColourSRV[ID + RightOffset].rgba;
+				NumColours++;
+			}
 
-					if (InMetaDataSRV[ID + TopLeftOffset].a == 0.0 && InMetaDataSRV[ID + TopRightOffset].a == 0.0)
-					{
-						float3 TopLeftColour = InColourSRV[InMetaDataSRV[ID + TopLeftOffset].xy].rgb;
-						float3 TopRightColour = InColourSRV[InMetaDataSRV[ID + TopRightOffset].xy].rgb;
+			if (InMetaDataSRV[ID + BottomRightOffset].a == 0.0)
+			{
+				AccumulatedColour += InColourSRV[ID + BottomRightOffset].rgba;
+				NumColours++;
+			}
 
-						float DiffColour = length(TopLeftColour - TopRightColour);
+			if (InMetaDataSRV[ID + BottomOffset].a == 0.0)
+			{
+				AccumulatedColour += InColourSRV[ID + BottomOffset].rgba;
+				NumColours++;
+			}
 
-						if (DiffColour < LowestDiff)
-						{
-							LowestDiff = DiffColour;
-							float2 UV = InMetaDataSRV[ID + TopOffset].xy;
-							BestValue = float4(UV.x, UV.y, PassCounter, 0);
-						}
-					}
+			if (InMetaDataSRV[ID + BottomLeftOffset].a == 0.0)
+			{
+				AccumulatedColour += InColourSRV[ID + BottomLeftOffset].rgba;
+				NumColours++;
+			}
 
-					if (InMetaDataSRV[ID + LeftOffset].a == 0.0)
-					{
-						float3 LeftColour = InColourSRV[InMetaDataSRV[ID + LeftOffset].xy].rgb;
+			if (InMetaDataSRV[ID + LeftOffset].a == 0.0)
+			{
+				AccumulatedColour += InColourSRV[ID + LeftOffset].rgba;
+				NumColours++;
+			}
 
-						float DiffColour = length(TopColour - LeftColour);
+			if (InMetaDataSRV[ID + TopLeftOffset].a == 0.0)
+			{
+				AccumulatedColour += InColourSRV[ID + TopLeftOffset].rgba;
+				NumColours++;
+			}
 
-						if (DiffColour < LowestDiff)
-						{
-							LowestDiff = DiffColour;
-							float2 UV = InMetaDataSRV[ID + TopLeftOffset].xy;
-							BestValue = float4(UV.x, UV.y, PassCounter, 0);
-						}
-					}
-
-					if (InMetaDataSRV[ID + RightOffset].a == 0.0)
-					{
-						float3 RightColour = InColourSRV[InMetaDataSRV[ID + RightOffset].xy].rgb;
-
-						float DiffColour = length(TopColour - RightColour);
-
-						if (DiffColour < LowestDiff)
-						{
-							LowestDiff = DiffColour;
-							float2 UV = InMetaDataSRV[ID + TopRightOffset].xy;
-							BestValue = float4(UV.x, UV.y, PassCounter, 0);
-						}
-					}
-				}
-
-				if (InMetaDataSRV[ID + BottomOffset].a == 0.0)
-				{
-					float3 BottomColour = InColourSRV[InMetaDataSRV[ID + BottomOffset].xy].rgb;
-
-					if (InMetaDataSRV[ID + BottomLeftOffset].a == 0.0 && InMetaDataSRV[ID + BottomRightOffset].a == 0.0)
-					{
-						float3 BottomLeftColour = InColourSRV[InMetaDataSRV[ID + BottomLeftOffset].xy].rgb;
-						float3 BottomRightColour = InColourSRV[InMetaDataSRV[ID + BottomRightOffset].xy].rgb;
-
-						float DiffColour = length(BottomLeftColour - BottomRightColour);
-
-						if (DiffColour < LowestDiff)
-						{
-							LowestDiff = DiffColour;
-							float2 UV = InMetaDataSRV[ID + TopOffset].xy;
-							BestValue = float4(UV.x, UV.y, PassCounter, 0);
-						}
-					}
-
-					if (InMetaDataSRV[ID + LeftOffset].a == 0.0)
-					{
-						float3 LeftColour = InColourSRV[InMetaDataSRV[ID + LeftOffset].xy].rgb;
-
-						float DiffColour = length(BottomColour - LeftColour);
-
-						if (DiffColour < LowestDiff)
-						{
-							LowestDiff = DiffColour;
-							float2 UV = InMetaDataSRV[ID + BottomLeftOffset].xy;
-							BestValue = float4(UV.x, UV.y, PassCounter, 0);
-						}
-					}
-
-					if (InMetaDataSRV[ID + RightOffset].a == 0.0)
-					{
-						float3 RightColour = InColourSRV[InMetaDataSRV[ID + RightOffset].xy].rgb;
-
-						float DiffColour = length(BottomColour - RightColour);
-
-						if (DiffColour < LowestDiff)
-						{
-							LowestDiff = DiffColour;
-							float2 UV = InMetaDataSRV[ID + BottomRightOffset].xy;
-							BestValue = float4(UV.x, UV.y, PassCounter, 0);
-						}
-					}
-				}
+			if (NumColours > 0)
+			{
+				MetaData = float4(MetaData.x, MetaData.y, PassCounter, 0);
+				Colour = AccumulatedColour / NumColours;	// colour is average of neighbours
 			}
 		}
 	}
 
-	OutMetaDataUAV[ID] = BestValue;
+	OutMetaDataUAV[ID] = MetaData;
 	OutColourUAV[ID] = Colour;
 }
