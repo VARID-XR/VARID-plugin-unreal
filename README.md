@@ -2,20 +2,20 @@
 ### Virtual & Augmented Reality for Inclusive Design
 
 ## Summary
+- VARID originates from the OpenVisSim project by Dr Peter Jones. 
+  - https://github.com/petejonze/OpenVisSim
+  - https://www.nature.com/articles/s41746-020-0242-6
 - VARID is a plugin for Unreal Engine.
 - VAIRD performs realtime image processing.
 - VARID realistically simulates a number of eye conditions via user defined profiles.
 - VARID ultimately aims to become the ‘standard’ for simulating eye conditions. 
 - VARID is an open, accessible tool that should continue to grow with the help of the open source community.
 - VARID does not require custom Unreal engine changes.
-- VARID is complete rewrite of the OpenVisSim project by Dr Peter Jones.
-  - https://github.com/petejonze/OpenVisSim
-  - https://www.nature.com/articles/s41746-020-0242-6
-  - https://www.appliedpsychophysics.com/
 
+  - 
 ## Credits
-- Joe Bacon - Make Transition Ltd - Initial Software engineering - https://www.maketransition.co.uk/
-- Peter Jones - City University - Original creator of OpenVisSim, VARID Consortium
+- Joe Bacon - Make Transition Ltd - Initial Software engineering https://www.maketransition.co.uk/
+- Peter Jones - City University - Original creator of OpenVisSim, VARID Consortium https://www.appliedpsychophysics.com/
 - David Gillespie - Foster & Partners - Applied R&D, VARID Consortium
 - Francis Aish - Foster & Partners - Applied R&D, VARID Consortium
 - Epic Games - Creator of Unreal Engine, Funding, Support
