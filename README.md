@@ -14,7 +14,7 @@
 
 ## Credits
 - Joe Bacon - Make Transition Ltd - Initial Software engineering, https://www.maketransition.co.uk/
-- Peter Jones - City University - Original creator of OpenVisSim, VARID Consortium, https://www.appliedpsychophysics.com/
+- Dr Peter Jones - City University - Original creator of OpenVisSim, VARID Consortium, https://www.appliedpsychophysics.com/
 - David Gillespie - Foster & Partners - Applied R&D, VARID Consortium
 - Francis Aish - Foster & Partners - Applied R&D, VARID Consortium
 - Epic Games - Creator of Unreal Engine, Funding, Support
