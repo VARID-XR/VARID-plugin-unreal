@@ -20,7 +20,7 @@
 - Epic Games - Creator of Unreal Engine, Funding, Support
 
 ## Requirements
-- Unreal Engine 4.26.2 - VARID requires the new post process SceneViewExtension functionality introduced in Unreal 4.26.
+- Unreal Engine 4.26+ - VARID requires the new post process SceneViewExtension functionality introduced in Unreal 4.26.
 
 ## Recommendations
 - Software
