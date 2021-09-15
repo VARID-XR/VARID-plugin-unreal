@@ -34,8 +34,8 @@ IMPORTANT
   - Project Settings > Project > Maps & Modes > Default Game mode
 - control the plugin using console commands or blueprint functions
 
-### Developer:
-Relevant skills: C++, Shaders, HLSL
+### Unreal C++/Shader Developer:
+...
 
 
 
@@ -129,6 +129,11 @@ plugin 5ms
 - Enable any additional plugins you may need e.g. for a Steam VR HMD
   - Edit > Plugins > Virtual Reality > Enable SteamVR
 
+
+### Packaging the Plugin
+Go to: Engine\Build\BatchFiles
+execute: .\RunUAT.bat BuildPlugin -Plugin="YOUR_ROOT/YOUR_APP/Plugins/VARID/VARID.uplugin" -Package="YOUR_PACKAGE_OUTPUT_FOLDER" -CreateSubFolder -TargetPlatforms=Win64 -VS2019
+
 ### Learning
 - https://www.unrealengine.com/en-US/onlinelearning-courses
 - https://www.youtube.com/watch?v=afodIcU_vK4&ab_channel=UnrealEngine
@@ -137,12 +142,12 @@ plugin 5ms
 - https://www.tomlooman.com/ue4-gameplay-framework/
 
 ### Communities
-- UDN
+- UDN (paid subscription)
 - Unreal slackers discord
 - Unreal forums
-- Reddit unreal
+- Reddit r/unreal
 - Stackoverflow unreal
-- Meetup - e.g. https://www.meetup.com/London-Unreal-Engine-Meetup/
+- Meetup events - e.g. https://www.meetup.com/London-Unreal-Engine-Meetup/
 
 
 ## Eye tracking
