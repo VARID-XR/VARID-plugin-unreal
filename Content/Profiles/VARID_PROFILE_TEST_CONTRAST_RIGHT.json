@@ -1,0 +1,39 @@
+{
+    "name": "VARID Profile Test Blur Right",
+    "description": "",
+    "author": "joe(at)maketransition.co.uk",
+    "date": "2021-09-08",
+    "left_eye": {},
+    "right_eye": {
+        "level_0_lowest_spatial_freq": {
+            "data": [0.0, 0, 1]
+        },
+        "level_1": {
+            "data": [0.0, 0, 1]
+        },
+        "level_2": {
+            "data": [0.0, 0, 1]
+        },
+        "level_3": {
+            "data": [0.0, 0, 1]
+        },
+        "level_4": {
+            "data": [0.0, 0, 1]
+        },
+        "level_5": {
+            "data": [1.0, 0, 1]
+        },
+        "level_6": {
+            "data": [1.0, 0, 1]
+        },
+        "level_7": {
+            "data": [1.0, 0, 1]
+        },
+        "level_8": {
+            "data": [1.0, 0, 1]
+        },
+        "level_9_highest_spatial_freq": {
+            "data": [1.0, 0, 1]
+        }                   
+    }
+}

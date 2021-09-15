@@ -1,0 +1,14 @@
+{
+    "name": "VARID Profile Test Blur Left",
+    "description": "",
+    "author": "joe(at)maketransition.co.uk",
+    "date": "2021-09-08",
+    "left_eye": {
+        "warp": {
+            "data": [
+                0, 0, 50, -50, 50
+            ]
+        }
+    },
+    "right_eye": {}
+}

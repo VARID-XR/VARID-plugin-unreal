@@ -9,7 +9,7 @@ This project and everyone participating in it is governed by the Code of Conduct
 
 ## Pull Requests
 - Pull requests are required. 
-- Commit message format: should have at least type e.g. add, fix and some context e.g. rendering, profile, FX
+- Commit message format: should have at least type e.g. add, fix and some context e.g. rendering, profile, FX.
 
 ## General Coding Styles
 - https://github.com/Allar/ue4-style-guide
@@ -17,16 +17,16 @@ This project and everyone participating in it is governed by the Code of Conduct
 
 ## Specific Coding Styles
 - VARID Prefix
-  - prefix main class/objects with VARID. 
-  - Its a short, unique and makes it easy to identify/namespace all VARID code. 
+  - Prefix classes/structs/files/etc with the VARID name. 
+  - It's short, unique and makes it easy to identify & namespace all VARID code. 
 - Shaders
   - Within C++, prefer calling the parameter object 'PassParameters'. This is inline with Unreal Engine code. 
-  - Place the parameters and call to AddPass in a local curly bracket {} scope. This helps prevent variable leakage. 
+  - Place the parameters and call to AddPass() in a local curly bracket scope {}. This helps prevent variable leakage. 
 - Alphabetical ordering
-  - Where applicable always work with VARID concepts in a consistent alphabetical order. e.g. for FX
+  - Where applicable, always work with VARID concepts in a consistent alphabetical order. e.g. for FX
     - The json profile lists the FX as sub nodes in alphabetical order. 
     - The render method builds up FX VF Maps in alphabetical order. 
 - Function parameters
-  - All input parameters prefixed with In
-  - All output parameter prefixed with Out
-  - Prefixes make it very clear what the scope of the variable belongs to
+  - All input parameters prefixed with In.
+  - All output parameter prefixed with Out.
+  - Prefixes make it very clear what the scope of the variable belongs to.

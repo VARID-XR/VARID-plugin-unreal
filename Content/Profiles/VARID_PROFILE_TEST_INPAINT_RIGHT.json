@@ -1,0 +1,14 @@
+{
+    "name": "VARID Profile Test Blur Right",
+    "description": "",
+    "author": "joe(at)maketransition.co.uk",
+    "date": "2021-09-08",
+    "left_eye": {},
+    "right_eye": {
+        "inpaint": {
+            "data": [
+                0, 0, 0, 0, 1
+            ]
+        }
+    }
+}
