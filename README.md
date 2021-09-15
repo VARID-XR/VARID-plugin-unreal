@@ -13,7 +13,7 @@
 - VARID does not require custom Unreal engine changes.
 
 ## Credits
-- Joe Bacon - Make Transition Ltd - Initial Software engineering https://www.maketransition.co.uk/
+- Joe Bacon - Make Transition Ltd - Initial Software engineering, https://www.maketransition.co.uk/
 - Peter Jones - City University - Original creator of OpenVisSim, VARID Consortium, https://www.appliedpsychophysics.com/
 - David Gillespie - Foster & Partners - Applied R&D, VARID Consortium
 - Francis Aish - Foster & Partners - Applied R&D, VARID Consortium
