@@ -1,0 +1,8 @@
+{
+    "name": "VARID Profile Template Minimum",
+    "description": "This is effectively applies no eye conditions",
+    "author": "joe(at)maketransition.co.uk",
+    "date": "2021-07-26",
+    "left_eye": {},
+    "right_eye": {}
+}
