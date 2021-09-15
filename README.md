@@ -49,7 +49,7 @@
 - To get the most out of VARID it is recommended you use an HMD with eye tracking.
 - VARID Pawn is setup for the VIVE Pro Eye by default - if you are using a different HMD you must set the HMDs vertical and horizontal display FOV using the VARID blueprint function - or just change the default in the Pawn.
 
-### Typical Software Structure
+### Typical Project Structure
 - Unreal Project
   - Project Content e.g. app levels, models, blueprints, materials, etc
   - Plugins
