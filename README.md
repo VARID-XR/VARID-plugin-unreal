@@ -41,6 +41,7 @@
 - Download this repo (clone or zip). This repo is the VARID plugin. It will require an Unreal application to plug into and actually work.
 - Create a new Unreal project or find an existing suitable Unreal project.
 - Place the VARID plugin into the project's plugins directory.
+- The plugin directory should simply be called 'VARID'. (Not 'ue4-varid-plugin')
 - Ensure the VARID plugin is enabled: Editor > Edit > Plugins > Other > VARID > Enabled = True.
 - VARID FX are applied to an Unreal 'level'.
 - Load one of the example AR/VR levels found in the VARID plugin content folder.
@@ -53,7 +54,7 @@
 - Unreal Project
   - Project Content e.g. app levels, models, blueprints, materials, etc
   - Plugins
-  	- VARIDPlugin
+    - VARID
     	- Plugin Content
       	- Blueprints
         	- Pawn
