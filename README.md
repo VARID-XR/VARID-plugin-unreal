@@ -70,14 +70,15 @@
           - Implemented using only Blueprints
           - Experimental
           - Currently only supports Logitech C920
-      - C++
+      - Shaders
+        - Multiple compute shaders + 1 pixel/vertex shader pair for final rendering
+      - Source (C++)
         - VARIDModule
         - VARIDRendering
         - VARIDProfile
         - VARIDEyeTracking
         - VARIDBlueprintFunctionLibrary
         - VARIDCheatManager
-      - Shaders
     - 3rd Party Eye Tracking Plugins e.g. VIVE SRanipal, OpenXR
     - 3rd Party Passthrough Camera Plugins e.g. VIVE SRWorks, ZedMini
 
