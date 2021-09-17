@@ -55,29 +55,31 @@
   - Project Content e.g. app levels, models, blueprints, materials, etc
   - Plugins
     - VARID
-    	- Plugin Content
-      	- Blueprints
-        	- Pawn
-        	- Player Controller
-        	- Game Mode
-      	- Levels
-        	- AR
-        	- VR
-      	- Profiles
-        	- Templates full/minimum
-        	- Tests
-      	- USBCamera
-        	- Implemented using only Blueprints
-        	- Experimental
-        	- Currently only supports Logitech C920
-  		- VARIDModule
-  		- VARIDRendering
-  		- VARIDProfile
-  		- VARIDEyeTracking
-  		- VARIDBlueprintFunctionLibrary
-  		- VARIDCheatManager
-  	- 3rd Party Eye Tracking Plugins e.g. VIVE SRanipal, OpenXR
-  	- 3rd Party Passthrough Camera Plugins e.g. VIVE SRWorks, ZedMini
+      - Content
+        - Blueprints
+          - Pawn
+          - Player Controller
+          - Game Mode
+        - Levels
+          - AR
+          - VR
+        - Profiles
+          - Templates full/minimum
+          - Tests
+        - USBCamera
+          - Implemented using only Blueprints
+          - Experimental
+          - Currently only supports Logitech C920
+      - C++
+        - VARIDModule
+        - VARIDRendering
+        - VARIDProfile
+        - VARIDEyeTracking
+        - VARIDBlueprintFunctionLibrary
+        - VARIDCheatManager
+      - Shaders
+    - 3rd Party Eye Tracking Plugins e.g. VIVE SRanipal, OpenXR
+    - 3rd Party Passthrough Camera Plugins e.g. VIVE SRWorks, ZedMini
 
 ### Helper Blueprints
 - The following blueprints are purely for convenience. They do not have to be used but they will accelerate VARID integration as common events are already wired up ready to go.
