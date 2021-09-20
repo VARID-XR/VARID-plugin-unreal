@@ -53,6 +53,9 @@ float2 GetRandomUVOutsideMask(Texture2D<float> MaskSRV, SamplerState Sampler, ui
 
 #define BlurPixels Blur5
 
+
+// Blurs from excellent work by James Stanard in the DirectX Samples.
+
 // The guassian blur weights (derived from Pascal's triangle)
 static const float Weights5[3] = { 6.0f / 16.0f, 4.0f / 16.0f, 1.0f / 16.0f };
 static const float Weights7[4] = { 20.0f / 64.0f, 15.0f / 64.0f, 6.0f / 64.0f, 1.0f / 64.0f };
@@ -72,6 +75,9 @@ float3 Blur9(float3 a, float3 b, float3 c, float3 d, float3 e, float3 f, float3 
 {
 	return Weights9[0] * e + Weights9[1] * (d + f) + Weights9[2] * (c + g) + Weights9[3] * (b + h) + Weights9[4] * (a + i);
 }
+
+
+// common packing/unpacking methods. Inspired by excellent work by James Stanard in the DirectX Samples.
 
 void Store2Pixels_Max256(uint CacheR[128], uint CacheG[128], uint CacheB[128], uint index, float3 pixel1, float3 pixel2)
 {

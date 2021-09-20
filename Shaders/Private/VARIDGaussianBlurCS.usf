@@ -3,12 +3,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+
+// Credit: adapted from from DirectX samples, Minigraph, James Stanard 
+
 #pragma once
 
 #include "/Engine/Private/Common.ush"
 #include "VARIDCommon.ush"
-
-// adapted from from DirectX samples, Minigraph, James Stanard 
 
 uint2 DispatchThreadIDOffset;
 Texture2D InSRV;
@@ -26,6 +27,7 @@ groupshared uint CacheR[128];
 groupshared uint CacheG[128];
 groupshared uint CacheB[128];
 
+// TODO there is an initial attempt of turning the methods below into common reusable packing/unpacking functions... see VARIDCommon.ush. Stop using there local functions and use the common functions?
 
 void Store2Pixels(uint index, float3 pixel1, float3 pixel2)
 {
