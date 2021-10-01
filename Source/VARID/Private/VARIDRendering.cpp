@@ -1384,7 +1384,6 @@ static uint8 CalculateNumMips2D(FIntPoint Size)
 	return mipsWidth > mipsHeight ? mipsWidth : mipsHeight;
 }
 
-
 /*****************************************************************************************************************/
 // scene view extenstion
 
