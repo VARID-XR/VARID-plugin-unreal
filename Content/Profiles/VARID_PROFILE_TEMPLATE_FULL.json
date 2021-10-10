@@ -188,19 +188,19 @@
         },
         "contrast": {
             "level_0_lowest_spatial_freq": {
-                "data": [0.2, 0, 1]
+                "data": [0.0, 0, 1]
             },
             "level_1": {
-                "data": [0.4, 0, 1]
+                "data": [0.0, 0, 1]
             },
             "level_2": {
-                "data": [0.6, 0, 1]
+                "data": [0.0, 0, 1]
             },
             "level_3": {
-                "data": [0.8, 0, 1]
+                "data": [0.0, 0, 1]
             },
             "level_4": {
-                "data": [1.0, 0, 1]
+                "data": [0.0, 0, 1]
             },
             "level_5": {
                 "data": [1.0, 0, 1]
@@ -216,17 +216,22 @@
             },
             "level_9_highest_spatial_freq": {
                 "data": [0.5, 0, 1]
-            }           
+            }          
         },
         "inpaint": {
-            "expected_num_data_points": 1,
+            "expected_num_data_points": 5,
             "data": [
-                0, 0, 0, 0, 1
+                0, 0, 0, 0, 1,
+                5, 0, 0, 0, 1,
+                0, 5, 0, 0, 1,
+                -5, 0, 0, 0, 1,
+                0, -5, 0, 0, 1
             ]
         },
         "warp": {
             "data": [
-                0, 0, -50, -50, 50
+                0, 0, -50, -100, 100,
+                10, 0, 50, -100, 100
             ]
         }
     }
