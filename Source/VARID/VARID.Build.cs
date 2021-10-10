@@ -10,12 +10,6 @@ public class VARID : ModuleRules
 {
 	public VARID(ReadOnlyTargetRules Target) : base(Target)
 	{
-		//PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;    // relates to IWYU - include what you use
-		////bEnforceIWYU = true;
-		//PrivatePCHHeaderFile = "Private/VARID_PCH.h";		// still useful to have a PCH
-		//MinFilesUsingPrecompiledHeaderOverride = 1;
-		////bUseUnity = false;
-		///bFasterWithoutUnity = true;	//'bFasterWithoutUnity has been deprecated in favor of setting 'bUseUnity'
 		bUseUnity = false;
 
 		PublicIncludePaths.AddRange(
