@@ -1,5 +1,5 @@
 {
-    "name": "VARID Profile Template Full",
+    "name": "VARID Profile Template All Fields Populated",
     "description": "This profile includes all fields with data. Use it as a starting point for other profiles. Data defined in 5 part tuples: [X degs, Y degs, Value dB, Min dB, Max dB]. Data defined in 3 part tuples assumes a single point that is applied full field: [Value dB, Min dB, Max dB]. field 'expected_num_data_points' is optional.",
     "author": "joe(at)maketransition.co.uk",
     "date": "2021-07-30",
