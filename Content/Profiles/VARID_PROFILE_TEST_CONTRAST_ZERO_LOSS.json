@@ -1,0 +1,74 @@
+{
+  "name": "VARID Profile Test Blur - Zero loss",
+  "description": "Test to see if image looks different (lighter/darker) on 1080x1920 display compared with vive pro (equivalent to 4k display).",
+  "author": "joe(at)maketransition.co.uk",
+  "date": "2021-10-11",
+  "left_eye": {
+    "contrast": {
+      "level_0_lowest_spatial_freq": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_1": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_2": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_3": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_4": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_5": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_6": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_7": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_8": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_9_highest_spatial_freq": {
+        "data": [ 1.0, 0, 1 ]
+      }
+    }
+  },
+  "right_eye": {
+    "contrast": {
+      "level_0_lowest_spatial_freq": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_1": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_2": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_3": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_4": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_5": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_6": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_7": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_8": {
+        "data": [ 1.0, 0, 1 ]
+      },
+      "level_9_highest_spatial_freq": {
+        "data": [ 1.0, 0, 1 ]
+      }
+    }
+  }
+}
