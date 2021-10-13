@@ -339,8 +339,8 @@ bool FVARIDModule::LoadProfile(const FString& ProfileFullPath, FVARIDProfile& Ou
 	FString JsonString;
 	FFileHelper::LoadFileToString(JsonString, *ProfileFullPath);
 	UE_LOG(LogTemp, Display, TEXT("VARID: JsonString: %s"), *JsonString);
-	json jsonObject = json::parse(TCHAR_TO_UTF8(*JsonString), nullptr, false, false);
-	if (jsonObject.is_discarded())
+	json JsonObject = json::parse(TCHAR_TO_UTF8(*JsonString), nullptr, false, false);
+	if (JsonObject.is_discarded())
 	{
 		UE_LOG(LogTemp, Error, TEXT("VARID: Could not parse the json profile."));
 		return false;
@@ -350,37 +350,37 @@ bool FVARIDModule::LoadProfile(const FString& ProfileFullPath, FVARIDProfile& Ou
 	// check mandatory fields
 
 	{
-		if (!jsonObject.contains("name"))
+		if (!JsonObject.contains("name"))
 		{
 			UE_LOG(LogTemp, Error, TEXT("VARID: Profile does not have 'name' field"));
 			return false;
 		}
 
-		if (!jsonObject.contains("description"))
+		if (!JsonObject.contains("description"))
 		{
 			UE_LOG(LogTemp, Error, TEXT("VARID: Profile does not have 'description' field"));
 			return false;
 		}
 
-		if (!jsonObject.contains("author"))
+		if (!JsonObject.contains("author"))
 		{
 			UE_LOG(LogTemp, Error, TEXT("VARID: Profile does not have 'author' field"));
 			return false;
 		}
 
-		if (!jsonObject.contains("date"))
+		if (!JsonObject.contains("date"))
 		{
 			UE_LOG(LogTemp, Error, TEXT("VARID: Profile does not have 'date' field"));
 			return false;
 		}
 
-		if (!jsonObject.contains("left_eye"))
+		if (!JsonObject.contains("left_eye"))
 		{
 			UE_LOG(LogTemp, Error, TEXT("VARID: Profile does not have 'left_eye' field"));
 			return false;
 		}
 
-		if (!jsonObject.contains("right_eye"))
+		if (!JsonObject.contains("right_eye"))
 		{
 			UE_LOG(LogTemp, Error, TEXT("VARID: VFMap does not have 'right_eye' field"));
 			return false;
@@ -388,10 +388,10 @@ bool FVARIDModule::LoadProfile(const FString& ProfileFullPath, FVARIDProfile& Ou
 	}
 
 	{
-		std::string name = jsonObject.at("name").get<std::string>();
-		std::string description = jsonObject.at("description").get<std::string>();
-		std::string author = jsonObject.at("author").get<std::string>();
-		std::string date = jsonObject.at("date").get<std::string>();
+		std::string name = JsonObject.at("name").get<std::string>();
+		std::string description = JsonObject.at("description").get<std::string>();
+		std::string author = JsonObject.at("author").get<std::string>();
+		std::string date = JsonObject.at("date").get<std::string>();
 
 		OutProfile.Name = FString(name.c_str());
 		OutProfile.Description = FString(description.c_str());
@@ -404,47 +404,47 @@ bool FVARIDModule::LoadProfile(const FString& ProfileFullPath, FVARIDProfile& Ou
 	{
 		FVARIDEye& Eye = OutProfile.LeftEye;
 
-		if (!ParseVFMap(jsonObject, "/left_eye/blur", FOV, Eye.Blur.VFMap)) return false;
+		if (!ParseVFMap(JsonObject, "/left_eye/blur", FOV, Eye.Blur.VFMap)) return false;
 
-		if (!ParseVFMap(jsonObject, "/left_eye/inpaint", FOV, Eye.Inpaint.VFMap)) return false;
+		if (!ParseVFMap(JsonObject, "/left_eye/inpaint", FOV, Eye.Inpaint.VFMap)) return false;
 
 		Eye.Contrast.VFMaps.Empty();
 		Eye.Contrast.VFMaps.SetNum(10);
-		if (!ParseVFMap(jsonObject, "/left_eye/contrast/level_0_lowest_spatial_freq", FOV, Eye.Contrast.VFMaps[9])) return false;
-		if (!ParseVFMap(jsonObject, "/left_eye/contrast/level_1", FOV, Eye.Contrast.VFMaps[8])) return false;
-		if (!ParseVFMap(jsonObject, "/left_eye/contrast/level_2", FOV, Eye.Contrast.VFMaps[7])) return false;
-		if (!ParseVFMap(jsonObject, "/left_eye/contrast/level_3", FOV, Eye.Contrast.VFMaps[6])) return false;
-		if (!ParseVFMap(jsonObject, "/left_eye/contrast/level_4", FOV, Eye.Contrast.VFMaps[5])) return false;
-		if (!ParseVFMap(jsonObject, "/left_eye/contrast/level_5", FOV, Eye.Contrast.VFMaps[4])) return false;
-		if (!ParseVFMap(jsonObject, "/left_eye/contrast/level_6", FOV, Eye.Contrast.VFMaps[3])) return false;
-		if (!ParseVFMap(jsonObject, "/left_eye/contrast/level_7", FOV, Eye.Contrast.VFMaps[2])) return false;
-		if (!ParseVFMap(jsonObject, "/left_eye/contrast/level_8", FOV, Eye.Contrast.VFMaps[1])) return false;
-		if (!ParseVFMap(jsonObject, "/left_eye/contrast/level_9_highest_spatial_freq", FOV, Eye.Contrast.VFMaps[0])) return false;
+		if (!ParseVFMap(JsonObject, "/left_eye/contrast/level_0_lowest_spatial_freq", FOV, Eye.Contrast.VFMaps[9])) return false;
+		if (!ParseVFMap(JsonObject, "/left_eye/contrast/level_1", FOV, Eye.Contrast.VFMaps[8])) return false;
+		if (!ParseVFMap(JsonObject, "/left_eye/contrast/level_2", FOV, Eye.Contrast.VFMaps[7])) return false;
+		if (!ParseVFMap(JsonObject, "/left_eye/contrast/level_3", FOV, Eye.Contrast.VFMaps[6])) return false;
+		if (!ParseVFMap(JsonObject, "/left_eye/contrast/level_4", FOV, Eye.Contrast.VFMaps[5])) return false;
+		if (!ParseVFMap(JsonObject, "/left_eye/contrast/level_5", FOV, Eye.Contrast.VFMaps[4])) return false;
+		if (!ParseVFMap(JsonObject, "/left_eye/contrast/level_6", FOV, Eye.Contrast.VFMaps[3])) return false;
+		if (!ParseVFMap(JsonObject, "/left_eye/contrast/level_7", FOV, Eye.Contrast.VFMaps[2])) return false;
+		if (!ParseVFMap(JsonObject, "/left_eye/contrast/level_8", FOV, Eye.Contrast.VFMaps[1])) return false;
+		if (!ParseVFMap(JsonObject, "/left_eye/contrast/level_9_highest_spatial_freq", FOV, Eye.Contrast.VFMaps[0])) return false;
 
-		if (!ParseVFMap(jsonObject, "/left_eye/warp", FOV, Eye.Warp.VFMap)) return false;
+		if (!ParseVFMap(JsonObject, "/left_eye/warp", FOV, Eye.Warp.VFMap)) return false;
 	}
 
 	{
 		FVARIDEye& Eye = OutProfile.RightEye;
 
-		if (!ParseVFMap(jsonObject, "/right_eye/blur", FOV, Eye.Blur.VFMap)) return false;
+		if (!ParseVFMap(JsonObject, "/right_eye/blur", FOV, Eye.Blur.VFMap)) return false;
 
-		if (!ParseVFMap(jsonObject, "/right_eye/inpaint", FOV, Eye.Inpaint.VFMap)) return false;
+		if (!ParseVFMap(JsonObject, "/right_eye/inpaint", FOV, Eye.Inpaint.VFMap)) return false;
 
 		Eye.Contrast.VFMaps.Empty();
 		Eye.Contrast.VFMaps.SetNum(10);
-		if (!ParseVFMap(jsonObject, "/right_eye/contrast/level_0_lowest_spatial_freq", FOV, Eye.Contrast.VFMaps[9])) return false;
-		if (!ParseVFMap(jsonObject, "/right_eye/contrast/level_1", FOV, Eye.Contrast.VFMaps[8])) return false;
-		if (!ParseVFMap(jsonObject, "/right_eye/contrast/level_2", FOV, Eye.Contrast.VFMaps[7])) return false;
-		if (!ParseVFMap(jsonObject, "/right_eye/contrast/level_3", FOV, Eye.Contrast.VFMaps[6])) return false;
-		if (!ParseVFMap(jsonObject, "/right_eye/contrast/level_4", FOV, Eye.Contrast.VFMaps[5])) return false;
-		if (!ParseVFMap(jsonObject, "/right_eye/contrast/level_5", FOV, Eye.Contrast.VFMaps[4])) return false;
-		if (!ParseVFMap(jsonObject, "/right_eye/contrast/level_6", FOV, Eye.Contrast.VFMaps[3])) return false;
-		if (!ParseVFMap(jsonObject, "/right_eye/contrast/level_7", FOV, Eye.Contrast.VFMaps[2])) return false;
-		if (!ParseVFMap(jsonObject, "/right_eye/contrast/level_8", FOV, Eye.Contrast.VFMaps[1])) return false;
-		if (!ParseVFMap(jsonObject, "/right_eye/contrast/level_9_highest_spatial_freq", FOV, Eye.Contrast.VFMaps[0])) return false;
+		if (!ParseVFMap(JsonObject, "/right_eye/contrast/level_0_lowest_spatial_freq", FOV, Eye.Contrast.VFMaps[9])) return false;
+		if (!ParseVFMap(JsonObject, "/right_eye/contrast/level_1", FOV, Eye.Contrast.VFMaps[8])) return false;
+		if (!ParseVFMap(JsonObject, "/right_eye/contrast/level_2", FOV, Eye.Contrast.VFMaps[7])) return false;
+		if (!ParseVFMap(JsonObject, "/right_eye/contrast/level_3", FOV, Eye.Contrast.VFMaps[6])) return false;
+		if (!ParseVFMap(JsonObject, "/right_eye/contrast/level_4", FOV, Eye.Contrast.VFMaps[5])) return false;
+		if (!ParseVFMap(JsonObject, "/right_eye/contrast/level_5", FOV, Eye.Contrast.VFMaps[4])) return false;
+		if (!ParseVFMap(JsonObject, "/right_eye/contrast/level_6", FOV, Eye.Contrast.VFMaps[3])) return false;
+		if (!ParseVFMap(JsonObject, "/right_eye/contrast/level_7", FOV, Eye.Contrast.VFMaps[2])) return false;
+		if (!ParseVFMap(JsonObject, "/right_eye/contrast/level_8", FOV, Eye.Contrast.VFMaps[1])) return false;
+		if (!ParseVFMap(JsonObject, "/right_eye/contrast/level_9_highest_spatial_freq", FOV, Eye.Contrast.VFMaps[0])) return false;
 
-		if (!ParseVFMap(jsonObject, "/right_eye/warp", FOV, Eye.Warp.VFMap)) return false;
+		if (!ParseVFMap(JsonObject, "/right_eye/warp", FOV, Eye.Warp.VFMap)) return false;
 	}
 
 	OutProfile.IsValid = true;
