@@ -223,7 +223,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VARID")
 		FVARIDEye RightEye;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "VARID")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "VARID")
 		bool IsValid;
 
 public:
