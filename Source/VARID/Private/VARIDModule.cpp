@@ -110,7 +110,7 @@ bool FVARIDModule::ListProfiles(FString RootFolderFullPath, FString Ext, TArray<
 
 	if (!FPaths::DirectoryExists(RootFolderFullPath))
 	{
-		UE_LOG(LogTemp, Display, TEXT("VARID: Directory does not exist: %s"), *RootFolderFullPath);
+		UE_LOG(LogTemp, Error, TEXT("VARID: Directory does not exist: %s"), *RootFolderFullPath);
 		return false;
 	}
 
