@@ -1442,6 +1442,14 @@ FScreenPassTexture FVARIDSceneViewExtension::PostProcessPassAfterTonemap_RenderT
 	const FIntPoint TextureSize = SceneColor.Texture->Desc.Extent;
 	const FIntRect ViewportRect = SceneColor.ViewRect;
 
+	// HACK: The Varjo XR-3 also has side displays. We dont currently support these so gracefully return without any VARID image processing.
+	switch (View.StereoPass)
+	{
+	case eSSP_LEFT_EYE_SIDE:
+	case eSSP_RIGHT_EYE_SIDE:
+		return SceneColor;
+	}
+
 	// NOTE! 
 	// scene colour texture is reused for left and right rendering
 	// if stereo, the image that is passed in already includes lens mesh distortion and masking
