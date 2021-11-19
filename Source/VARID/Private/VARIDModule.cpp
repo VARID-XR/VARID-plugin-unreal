@@ -44,8 +44,6 @@ void FVARIDModule::StartupModule()
 	FString PluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("VARID"))->GetBaseDir(), TEXT("Shaders"));
 	UE_LOG(LogTemp, Display, TEXT("VARID: PluginShaderDir: %s"), *PluginShaderDir);
 	AddShaderSourceDirectoryMapping(TEXT("/Plugin/VARID"), PluginShaderDir);
-
-	// cant instantiate VARIDCore here. too early for the scene view extension to be added. Would need to break apart constructor?
 }
 
 void FVARIDModule::ShutdownModule()
