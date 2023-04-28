@@ -2,7 +2,7 @@
 ### Virtual & Augmented Reality for Inclusive Design
 
 ## Summary
-- VARID originates from the OpenVisSim project by Dr Peter Jones. 
+- VARID supercedes the previous OpenVisSim project developed by Dr Pete Jones. 
   - github.com/petejonze/OpenVisSim
   - www.nature.com/articles/s41746-020-0242-6
 - VARID is a plugin for Unreal Engine.
