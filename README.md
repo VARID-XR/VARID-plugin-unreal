@@ -11,23 +11,26 @@
 - VARID ultimately aims to become the ‘standard’ for simulating eye conditions. 
 - VARID is an open, accessible tool that should continue to grow with the help of the open source community.
 - VARID does not require custom Unreal engine changes.
+- If you want to contribute to VARID, please email: hello@varid.com
 
 ## Credits
 - Joe Bacon - Make Transition Ltd - Initial Software engineering
   - www.maketransition.co.uk
-- Dr Peter Jones - City University - Original creator of OpenVisSim, VARID Consortium
+- Dr Peter Jones - City University - Original creator of OpenVisSim
   - www.appliedpsychophysics.com
-- David Gillespie - Foster & Partners - Applied R&D, VARID Consortium
-- Francis Aish - Foster & Partners - Applied R&D, VARID Consortium
-- Epic Games - Creator of Unreal Engine, Funding, Support
+- Adam Davis - Fosrer + Partners - Applied R&D
+- David Gillespie - Foster + Partners - Applied R&D
+- Francis Aish - Formerly Foster & Partners - Applied R&D
+- Epic Games - Epic Megagrant Funding
 
 ## Requirements
 - Unreal Engine 4.26+ 
-- VARID requires the new post process SceneViewExtension functionality introduced in Unreal 4.26.
+- VARID requires the new post process SceneViewExtension functionality introduced in Unreal 4.26 and has been tested in Unreal 4.27
+- VARID does not currently work with Unreal 5.x however it is on the roadmap and contributions updating to 5 are welcome.
 
 ## Recommendations
 - Software
-  - Unreal Engine 4.26.2 PDB synbols via install options. This makes it easier to step into Engine code if need be.
+  - Unreal Engine 4.26.2/4.27 PDB synbols via install options. This makes it easier to step into Engine code if need be.
   - Visual Studio Community 2019 - preferred IDE.
   - Git - source control.
   - RenderDoc - profiling/debugging graphics.
@@ -39,7 +42,8 @@
   - GPU - anything from NVIDIA GTX 1060 or Radeon RX 580 upwards (for minimum VR support).
   - Display resolution:
     - Desktop monitor - we recommend minimum of 1920x1080. Any less than this and the constrast FX will have limited spatial frequencies attenuation. See 'Pyramids & Mipmaps' below for more details.
-    - VR - we recommend ~4k display (left eye + right eye) e.g. VIVE Pro HMD.
+    - VR - we recommend ~4k display (left eye + right eye) e.g. VIVE Pro HMD or HP Omnicept
+  - VARID currently does not run on mobile as the required post processing is not currently implemented on mobile. It may be possible to enable this via a custom engine build however this has not been tested.
 
 
 ## How to...
@@ -164,13 +168,19 @@
 - Renderdoc processing time = ~5ms @ 4k
 
 ### HMD
-- VIVE Pro Eye
+- HP Omnicept
+- VIVE Pro Eye (tested and implemented in repo)
 - Front facing cameras
   - 96 degs horizontal and 80 degs vertical field of view with a 480p resolution per eye. The resolution is poor, hence the experimental work using the Logitech C920.
   - They can also capture up to 90fps with an average latency of 200ms, so they're good enough to avoid any lag-related nausea.
 - AMOLED displays - 1440 x 1600 pixels per eye (2880 x 1600 pixels combined), 90 Hz, 110 degrees.
 - https://www.vive.com/uk/product/vive-pro-eye/specs/
 - In reality it is 110 degrees on vertical and 106 degrees on horizontal. source: https://forum.vive.com/topic/8550-configuration-of-fov-of-htc-vive-pro-eye/?ct=1626168483
+
+### Stand Alone HMD Support
+- Ideally VARID would run on a standalone HMD using full colour passthrough however as of Q3 2023, this is not possible due to:
+ - Unreal engine mobile render pipeline not natively supporting the post processing required to apply VARID filters to view
+ - Passthrough camera feeds from current generation headsets that feature eye tracking and coloud passthrough (eg Pico 4E or Quest Pro) prevent applications directly accessing the camera feed meaning that VARID image processing filters can not be applied to the feeds.
 
 ## Unreal
 
@@ -212,9 +222,11 @@
 - Perform this from a system command line. Running via the Engine Editor causes issue: 'requires VS2017'. Resolved by manually running with -VS2019 switch as show below.
 - Go to directory: Engine\Build\BatchFiles
 - execute: .\RunUAT.bat BuildPlugin -Plugin="YOUR_ROOT/YOUR_APP/Plugins/VARID/VARID.uplugin" -Package="YOUR_PACKAGE_OUTPUT_FOLDER" -CreateSubFolder -TargetPlatforms=Win64 -VS2019
+- The packaging process does not automatically copy the test VARID filters into the packaged application, therefore after packaging, you will need to ensure that any filters that are used are copied across into the following folder ProjectName\Plugins\VARID\Content\Profiles
+  - If no filters are present, the view will show as black when runningg
 
 ### Communities
-- UDN (paid subscription)
+- UDN
 - Unreal slackers discord
 - Unreal forums
 - Reddit r/unreal
@@ -242,6 +254,9 @@
 
 - VERY IMPORTANT - you still have to install and/or enable a specific eye tracker API (usually in the form of a 3rd party plugin e.g VIVE SRanipal) depending on your hardware
 
+- HP Omnicept has been tested and works well. Minor updates are required on the base VARID Pawn to take in Omnicept tracking data rather than Vive tracking data.
+
+
 #### SRanipal
 - This 3rd party plugin provided by VIVE enables realtime eye tracking from VIVE Pro Eye Tobii.
 - FIXED SRanipal : https://github.com/Temaran/SRanipalUE4SDK
@@ -265,9 +280,8 @@ System tray > Runtime > About: should report:
   -  Project settings > PLugins > SRanipal > Eye Settings > Eye Version = 2
 
 #### OpenXR
-- I was not able to get OpenXR eye tracking to work. Crashes Unreal engine at startup. 
+- It was not possible to get OpenXR eye tracking to work in 4.27. Crashes Unreal engine at startup.
 - Plugin provided by Unreal Engine. Disabled by default
-- Beta versiopn. unstable
 
 ### Hardware
 
@@ -477,6 +491,6 @@ Ordering of operations
 - Sensitivity can be adjust in shader VARIDNormalMapCS.usf
 
 ## CloudXR
-- CloudXR is not compatible with VARID. 
-- At time of writing Q3 2021, it is not Not possible to send realtime camera image to the server (therefore AR not possible) and eye tracking is not supported therefore even in VR mode it would be quite limited. 
-- No back channels for sending eye tracking data. not even for sending microphone audio. This will likely change. 
+- Currently CloudXR is not compatible with VARID. 
+- At time of writing Q3 2023, it is not Not possible to send realtime camera image to the server (therefore AR not possible) and eye tracking is not supported therefore even in VR mode it would be quite limited. 
+- No back channels for sending eye tracking data. not even for sending microphone audio. This will likely change.
