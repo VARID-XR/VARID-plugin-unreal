@@ -1,4 +1,6 @@
 ﻿# **VARID**
+<img src="VARID_Logo.png" alt="VARID Logo" width="800"/>
+
 ### Virtual & Augmented Reality for Inclusive Design
 
 ## Summary
