@@ -20,9 +20,9 @@
   - www.maketransition.co.uk
 - Dr Peter Jones - City University - Original creator of OpenVisSim
   - www.appliedpsychophysics.com
-- Adam Davis - Foster + Partners - Applied R&D
-- David Gillespie - Foster + Partners - Applied R&D
-- Francis Aish - Formerly Foster + Partners - Applied R&D
+- Adam Davis - Foster + Partners - Applied R+D
+- David Gillespie - Foster + Partners - Applied R+D
+- Francis Aish - Formerly Foster + Partners - Applied R+D
 - Epic Games - Epic Megagrant Funding
 
 ## Requirements
