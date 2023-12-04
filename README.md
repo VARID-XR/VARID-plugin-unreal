@@ -8,7 +8,7 @@
   - github.com/petejonze/OpenVisSim
   - www.nature.com/articles/s41746-020-0242-6
 - VARID is a plugin for Unreal Engine.
-- VAIRD performs realtime image processing.
+- VARID performs realtime image processing.
 - VARID realistically simulates a number of eye conditions via user defined profiles.
 - VARID ultimately aims to become the ‘standard’ for simulating eye conditions. 
 - VARID is an open, accessible tool that should continue to grow with the help of the open source community.
